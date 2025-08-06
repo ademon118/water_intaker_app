@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'features/home/widgets/home_page.dart';
+import 'services/water_intake_service.dart';
+import 'services/reminder_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await WaterIntakeService.initialize();
+  await ReminderService.initialize();
   runApp(const WaterIntakeApp());
 }
 

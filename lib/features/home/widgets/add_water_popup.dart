@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 
 class AddWaterPopup extends StatefulWidget {
   final VoidCallback onClose;
+  final Function(int amount, String drinkType)? onAddWater;
 
-  const AddWaterPopup({super.key, required this.onClose});
+  const AddWaterPopup({
+    super.key, 
+    required this.onClose,
+    this.onAddWater,
+  });
 
   @override
   State<AddWaterPopup> createState() => _AddWaterPopupState();
@@ -311,6 +316,10 @@ class _AddWaterPopupState extends State<AddWaterPopup>
                           child: ElevatedButton(
                             onPressed: _selectedDrinkIndex >= 0 ? () {
                               // Add drink logic here
+                              if (widget.onAddWater != null) {
+                                final selectedDrink = _drinks[_selectedDrinkIndex];
+                                widget.onAddWater!(_selectedAmount.toInt(), selectedDrink['name']);
+                              }
                               _closePopup();
                             } : null,
                             style: ElevatedButton.styleFrom(

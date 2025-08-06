@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
+import '../../../services/reminder_service.dart';
 
 class ReminderPopup extends StatefulWidget {
   final VoidCallback onClose;
+  final Function(String mode, int snoozeDuration)? onSaveReminder;
 
-  const ReminderPopup({super.key, required this.onClose});
+  const ReminderPopup({
+    super.key, 
+    required this.onClose,
+    this.onSaveReminder,
+  });
 
   @override
   State<ReminderPopup> createState() => _ReminderPopupState();
@@ -180,10 +186,20 @@ class _ReminderPopupState extends State<ReminderPopup>
                           width: double.infinity,
                           height: 50,
                                                       child: ElevatedButton(
-                              onPressed: (_selectedReminderMode >= 0 && _selectedSnoozeDuration >= 0) ? () {
-                                // Add reminder logic here
-                                _closePopup();
-                              } : null,
+                                                          onPressed: (_selectedReminderMode >= 0 && _selectedSnoozeDuration >= 0) ? () async {
+                              // Request permissions if needed
+                              if (_reminderModes[_selectedReminderMode]['name'] != 'Off') {
+                                await ReminderService.requestPermissions();
+                              }
+                              
+                              // Add reminder logic here
+                              if (widget.onSaveReminder != null) {
+                                final selectedMode = _reminderModes[_selectedReminderMode]['name'];
+                                final selectedDuration = _selectedSnoozeDuration;
+                                widget.onSaveReminder!(selectedMode, selectedDuration);
+                              }
+                              _closePopup();
+                            } : null,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF00B4D8), // 00B4D8 button color
                               foregroundColor: Colors.white,
@@ -204,6 +220,30 @@ class _ReminderPopupState extends State<ReminderPopup>
                       ),
                       
                       const SizedBox(height: 15),
+                      
+                      // Test Notification button
+                      GestureDetector(
+                        onTap: () async {
+                          await ReminderService.showTestNotification();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: const Color(0xFF00B4D8)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'Test Notification',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF00B4D8), // 00B4D8 blue color
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 10),
                       
                       // Advanced Settings link
                       GestureDetector(

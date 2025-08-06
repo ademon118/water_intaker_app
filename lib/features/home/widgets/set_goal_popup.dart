@@ -3,8 +3,14 @@ import 'package:flutter/material.dart';
 class SetGoalPopup extends StatefulWidget {
   final VoidCallback onClose;
   final double currentGoal;
+  final Function(double newGoal)? onSaveGoal;
 
-  const SetGoalPopup({super.key, required this.onClose, required this.currentGoal});
+  const SetGoalPopup({
+    super.key, 
+    required this.onClose, 
+    required this.currentGoal,
+    this.onSaveGoal,
+  });
 
   @override
   State<SetGoalPopup> createState() => _SetGoalPopupState();
@@ -198,8 +204,8 @@ class _SetGoalPopupState extends State<SetGoalPopup>
                             onPressed: _isGoalValid ? () {
                               // Save goal logic here
                               final newGoal = double.tryParse(_goalController.text);
-                              if (newGoal != null) {
-                                // Update the goal in the parent widget
+                              if (newGoal != null && widget.onSaveGoal != null) {
+                                widget.onSaveGoal!(newGoal);
                                 _closePopup();
                               }
                             } : null,
