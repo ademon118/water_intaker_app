@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../services/water_intake_provider.dart';
 
-class AddWaterPopup extends StatefulWidget {
+class AddWaterPopup extends ConsumerStatefulWidget {
   final VoidCallback onClose;
   final Function(int amount, String drinkType)? onAddWater;
 
@@ -11,10 +13,10 @@ class AddWaterPopup extends StatefulWidget {
   });
 
   @override
-  State<AddWaterPopup> createState() => _AddWaterPopupState();
+  ConsumerState<AddWaterPopup> createState() => _AddWaterPopupState();
 }
 
-class _AddWaterPopupState extends State<AddWaterPopup>
+class _AddWaterPopupState extends ConsumerState<AddWaterPopup>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _slideAnimation;
@@ -22,41 +24,6 @@ class _AddWaterPopupState extends State<AddWaterPopup>
 
   int _selectedDrinkIndex = -1;
   double _selectedAmount = 250; // Default amount
-
-  final List<Map<String, dynamic>> _drinks = [
-    {
-      'name': 'Water',
-      'icon': Icons.water_drop,
-      'amount': 250,
-    },
-    {
-      'name': 'Coffee',
-      'icon': Icons.local_cafe,
-      'amount': 300,
-    },
-    {
-      'name': 'Tea',
-      'icon': Icons.local_drink,
-      'amount': 250,
-    },
-    {
-      'name': 'Milk',
-      'icon': Icons.local_drink,
-      'amount': 300,
-    },
-    {
-      'name': 'Smoothie',
-      'icon': Icons.local_bar,
-      'amount': 350,
-    },
-    {
-      'name': 'Juice',
-      'icon': Icons.local_bar,
-      'amount': 300,
-    },
-  ];
-
-  final List<double> _amountOptions = [100, 150, 200, 250, 300, 350, 400, 500];
 
   @override
   void initState() {
@@ -94,8 +61,25 @@ class _AddWaterPopupState extends State<AddWaterPopup>
     });
   }
 
+  IconData _getIconData(String iconName) {
+    switch (iconName) {
+      case 'water_drop':
+        return Icons.water_drop;
+      case 'local_cafe':
+        return Icons.local_cafe;
+      case 'local_drink':
+        return Icons.local_drink;
+      case 'local_bar':
+        return Icons.local_bar;
+      default:
+        return Icons.local_bar;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final drinkTypes = ref.watch(drinkTypesProvider);
+    
     return AnimatedBuilder(
       animation: _animationController,
       builder: (context, child) {
@@ -145,7 +129,7 @@ class _AddWaterPopupState extends State<AddWaterPopup>
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text(
-                              'Water',
+                              'Add Drink',
                               style: TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
@@ -155,7 +139,7 @@ class _AddWaterPopupState extends State<AddWaterPopup>
                             GestureDetector(
                               onTap: _closePopup,
                               child: const Text(
-                                'Add Drink',
+                                'Cancel',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -174,12 +158,15 @@ class _AddWaterPopupState extends State<AddWaterPopup>
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _buildDrinkButton('Milk', Icons.local_drink, 0),
-                            _buildDrinkButton('Water', Icons.water_drop, 1),
-                            _buildDrinkButton('Coffee', Icons.local_cafe, 2),
-                            _buildDrinkButton('Juice', Icons.local_bar, 3),
-                          ],
+                          children: drinkTypes.take(4).map((drink) {
+                            final index = drinkTypes.indexOf(drink);
+                            return _buildDrinkButton(
+                              drink['name'], 
+                              _getIconData(drink['icon']), 
+                              index,
+                              drink['defaultAmount'],
+                            );
+                          }).toList(),
                         ),
                       ),
                       
@@ -316,8 +303,8 @@ class _AddWaterPopupState extends State<AddWaterPopup>
                           child: ElevatedButton(
                             onPressed: _selectedDrinkIndex >= 0 ? () {
                               // Add drink logic here
-                              if (widget.onAddWater != null) {
-                                final selectedDrink = _drinks[_selectedDrinkIndex];
+                              if (widget.onAddWater != null && _selectedDrinkIndex < drinkTypes.length) {
+                                final selectedDrink = drinkTypes[_selectedDrinkIndex];
                                 widget.onAddWater!(_selectedAmount.toInt(), selectedDrink['name']);
                               }
                               _closePopup();
@@ -353,14 +340,14 @@ class _AddWaterPopupState extends State<AddWaterPopup>
     );
   }
 
-  Widget _buildDrinkButton(String name, IconData icon, int index) {
+  Widget _buildDrinkButton(String name, IconData icon, int index, int defaultAmount) {
     final isSelected = _selectedDrinkIndex == index;
     
     return GestureDetector(
       onTap: () {
         setState(() {
           _selectedDrinkIndex = index;
-          _selectedAmount = _drinks[index]['amount'];
+          _selectedAmount = defaultAmount.toDouble();
         });
       },
       child: Container(

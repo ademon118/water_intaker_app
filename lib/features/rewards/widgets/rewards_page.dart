@@ -1,0 +1,367 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../services/water_intake_provider.dart';
+import '../../../services/rewards_service.dart';
+import '../../../services/user_settings_service.dart';
+import '../../../models/user_settings.dart';
+
+class RewardsPage extends ConsumerStatefulWidget {
+  const RewardsPage({super.key});
+
+  @override
+  ConsumerState<RewardsPage> createState() => _RewardsPageState();
+}
+
+class _RewardsPageState extends ConsumerState<RewardsPage> {
+  UserSettings? _userSettings;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final settings = await UserSettingsService.loadSettings();
+    setState(() {
+      _userSettings = settings;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedDate = ref.watch(selectedDateNotifierProvider);
+    final totalIntake = ref.read(waterIntakeNotifierProvider.notifier).getTotalIntakeForDate(selectedDate);
+    final goalIntake = _userSettings?.dailyGoal ?? 2800;
+    final progress = goalIntake > 0 ? (totalIntake / goalIntake).clamp(0.0, 1.0) : 0.0;
+    final rewardsState = ref.watch(rewardsNotifierProvider);
+    final badges = (rewardsState['badges'] as List).map((e) => Map<String, dynamic>.from(e)).toList();
+    final achievements = (rewardsState['achievements'] as List).map((e) => Map<String, dynamic>.from(e)).toList();
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF1F5F9),
+      appBar: AppBar(
+        title: const Text(
+          'Rewards',
+          style: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Progress Section
+            _buildProgressSection(totalIntake, goalIntake, progress),
+            const SizedBox(height: 30),
+
+            // Badges Section
+            _buildBadgesSection(),
+            const SizedBox(height: 30),
+
+            // Achievements Section
+            _buildAchievementsSection(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProgressSection(int totalIntake, double goalIntake, double progress) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Today\'s Progress',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              Text(
+                '${totalIntake.toInt()}ml / ${goalIntake.toInt()}ml',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          LinearProgressIndicator(
+            value: progress,
+            backgroundColor: Colors.grey[300],
+            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF00B4D8)),
+            minHeight: 8,
+          ),
+          const SizedBox(height: 15),
+          if (progress >= 1.0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF00B4D8),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: const Text(
+                'Goal Achieved! 🎉',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBadgesSection() {
+    final rewardsState = ref.watch(rewardsNotifierProvider);
+    final badges = (rewardsState['badges'] as List).map((e) => Map<String, dynamic>.from(e)).toList();
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Badges',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 15),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 15,
+            mainAxisSpacing: 15,
+            childAspectRatio: 0.8,
+          ),
+          itemCount: badges.length,
+          itemBuilder: (context, index) {
+            final badge = badges[index];
+            return _buildBadgeCard(badge);
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBadgeCard(Map<String, dynamic> badge) {
+    final isUnlocked = badge['unlocked'] ?? false;
+    
+    IconData getIconData(String iconName) {
+      switch (iconName) {
+        case 'water_drop':
+          return Icons.water_drop;
+        case 'flag':
+          return Icons.flag;
+        case 'local_fire_department':
+          return Icons.local_fire_department;
+        case 'emoji_events':
+          return Icons.emoji_events;
+        case 'local_bar':
+          return Icons.local_bar;
+        default:
+          return Icons.star;
+      }
+    }
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: isUnlocked ? const Color(0xFF00B4D8) : Colors.grey[300],
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              getIconData(badge['icon']),
+              color: isUnlocked ? Colors.white : Colors.grey[600],
+              size: 30,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            badge['name'],
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isUnlocked ? Colors.black87 : Colors.grey[500],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            badge['description'],
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[600],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAchievementsSection() {
+    final rewardsState = ref.watch(rewardsNotifierProvider);
+    final achievements = (rewardsState['achievements'] as List).map((e) => Map<String, dynamic>.from(e)).toList();
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Achievements',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 15),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: achievements.length,
+          itemBuilder: (context, index) {
+            final achievement = achievements[index];
+            return _buildAchievementCard(achievement);
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAchievementCard(Map<String, dynamic> achievement) {
+    final isCompleted = achievement['completed'] ?? false;
+    
+    IconData getIconData(String iconName) {
+      switch (iconName) {
+        case 'water_drop':
+          return Icons.water_drop;
+        case 'flag':
+          return Icons.flag;
+        case 'local_fire_department':
+          return Icons.local_fire_department;
+        case 'emoji_events':
+          return Icons.emoji_events;
+        case 'local_bar':
+          return Icons.local_bar;
+        default:
+          return Icons.star;
+      }
+    }
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: isCompleted ? const Color(0xFF00B4D8) : Colors.grey[300],
+              borderRadius: BorderRadius.circular(25),
+            ),
+            child: Icon(
+              getIconData(achievement['icon']),
+              color: isCompleted ? Colors.white : Colors.grey[600],
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  achievement['title'],
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: isCompleted ? Colors.black87 : Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  achievement['description'],
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (isCompleted)
+            const Icon(
+              Icons.check_circle,
+              color: Color(0xFF00B4D8),
+              size: 24,
+            ),
+        ],
+      ),
+    );
+  }
+
+}

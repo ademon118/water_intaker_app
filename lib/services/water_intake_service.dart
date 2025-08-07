@@ -51,6 +51,41 @@ class WaterIntakeService {
     return breakdown;
   }
 
+  static List<Map<String, dynamic>> getAllDrinkTypes() {
+    return [
+      {
+        'name': 'Water',
+        'icon': 'water_drop',
+        'defaultAmount': 250,
+      },
+      {
+        'name': 'Coffee',
+        'icon': 'local_cafe',
+        'defaultAmount': 300,
+      },
+      {
+        'name': 'Tea',
+        'icon': 'local_drink',
+        'defaultAmount': 250,
+      },
+      {
+        'name': 'Milk',
+        'icon': 'local_drink',
+        'defaultAmount': 300,
+      },
+      {
+        'name': 'Smoothie',
+        'icon': 'local_bar',
+        'defaultAmount': 350,
+      },
+      {
+        'name': 'Juice',
+        'icon': 'local_bar',
+        'defaultAmount': 300,
+      },
+    ];
+  }
+
   static Future<void> deleteIntake(String id) async {
     await _box?.delete(id);
   }

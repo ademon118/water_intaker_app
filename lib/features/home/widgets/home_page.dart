@@ -1,22 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../dashboard/widgets/dashboard_page.dart';
+import '../../rewards/widgets/rewards_page.dart';
 import 'add_water_popup.dart';
 import 'reminder_popup.dart';
 import 'set_goal_popup.dart';
 import '../../../services/water_intake_service.dart';
 import '../../../services/user_settings_service.dart';
 import '../../../services/reminder_service.dart';
+import '../../../services/water_intake_provider.dart';
+import '../../../services/rewards_service.dart';
 import '../../../models/water_intake.dart';
 import '../../../models/user_settings.dart';
+import '../../rewards/widgets/congratulations_popup.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends ConsumerState<HomePage> {
   int _currentIndex = 0;
   double _currentIntake = 0;
   double _goalIntake = 2800;
@@ -24,10 +29,9 @@ class _HomePageState extends State<HomePage> {
   bool _showAddWaterPopup = false;
   bool _showReminderPopup = false;
   bool _showSetGoalPopup = false;
-  DateTime _selectedDate = DateTime.now();
   bool _showNavigationDrawer = false;
+  bool _hasShownCongratulationsPopup = false;
   UserSettings? _userSettings;
-  List<WaterIntake> _todayIntakes = [];
 
   @override
   void initState() {
@@ -37,28 +41,43 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadData() async {
     final settings = await UserSettingsService.loadSettings();
-    final todayIntakes = WaterIntakeService.getIntakesForDate(_selectedDate);
-    final totalIntake = WaterIntakeService.getTotalIntakeForDate(_selectedDate);
+    final selectedDate = ref.read(selectedDateNotifierProvider);
+    final totalIntake = ref.read(waterIntakeNotifierProvider.notifier).getTotalIntakeForDate(selectedDate);
     
     setState(() {
       _userSettings = settings;
       _goalIntake = settings.dailyGoal;
-      _todayIntakes = todayIntakes;
       _currentIntake = totalIntake.toDouble();
       _progress = _goalIntake > 0 ? (_currentIntake / _goalIntake).clamp(0.0, 1.0) : 0.0;
     });
   }
 
   Future<void> _addWaterIntake(int amount, String drinkType) async {
+    final selectedDate = ref.read(selectedDateNotifierProvider);
     final intake = WaterIntake(
-      date: _selectedDate,
+      date: selectedDate,
       amount: amount,
       drinkType: drinkType,
       timestamp: DateTime.now(),
     );
     
-    await WaterIntakeService.addWaterIntake(intake);
+    await ref.read(waterIntakeNotifierProvider.notifier).addWaterIntake(intake);
     await _loadData(); // Reload data to update UI
+    
+    // Reset the congratulations popup flag when adding new drinks
+    setState(() {
+      _hasShownCongratulationsPopup = false;
+    });
+    
+    // Check for rewards and badges
+    final totalIntake = ref.read(waterIntakeNotifierProvider.notifier).getTotalIntakeForDate(selectedDate);
+    final goalIntake = _userSettings?.dailyGoal ?? 2800;
+    
+    await ref.read(rewardsNotifierProvider.notifier).checkAndAwardBadges(
+      totalIntake, 
+      goalIntake, 
+      selectedDate,
+    );
     
     // Show success message
     if (mounted) {
@@ -99,6 +118,57 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final selectedDate = ref.watch(selectedDateNotifierProvider);
+    final waterIntakes = ref.watch(waterIntakeNotifierProvider);
+    final drinkBreakdown = ref.read(waterIntakeNotifierProvider.notifier).getDrinkTypeBreakdownForDate(selectedDate);
+    final rewardsState = ref.watch(rewardsNotifierProvider);
+    final goalReachedToday = rewardsState['goalReachedToday'] as bool;
+    
+    // Update current intake and progress when data changes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final totalIntake = ref.read(waterIntakeNotifierProvider.notifier).getTotalIntakeForDate(selectedDate);
+      if (totalIntake != _currentIntake) {
+        setState(() {
+          _currentIntake = totalIntake.toDouble();
+          _progress = _goalIntake > 0 ? (_currentIntake / _goalIntake).clamp(0.0, 1.0) : 0.0;
+        });
+      }
+    });
+
+                // Show congratulations popup when goal is reached
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (goalReachedToday && mounted && !_hasShownCongratulationsPopup) {
+                final latestBadge = ref.read(rewardsNotifierProvider.notifier).getLatestUnlockedBadge();
+                if (latestBadge != null) {
+                  setState(() {
+                    _hasShownCongratulationsPopup = true;
+                  });
+                  // Add a small delay to ensure the UI is fully updated
+                  Future.delayed(const Duration(milliseconds: 500), () {
+                    if (mounted) {
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) => CongratulationsPopup(
+                          badgeName: latestBadge['name'] as String,
+                          badgeDescription: latestBadge['description'] as String,
+                          onSave: () {
+                            ref.read(rewardsNotifierProvider.notifier).resetGoalReachedToday();
+                          },
+                          onViewBadge: () {
+                            ref.read(rewardsNotifierProvider.notifier).resetGoalReachedToday();
+                            Navigator.pushNamed(context, '/rewards');
+                          },
+                        ),
+                      );
+                    }
+                  });
+                }
+              }
+            });
+
+
+
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9), // F1F5F9 for overall background
       body: Stack(
@@ -127,7 +197,7 @@ class _HomePageState extends State<HomePage> {
                           const SizedBox(height: 30),
 
                           // Today Drinks
-                          _buildTodayDrinks(),
+                          _buildTodayDrinks(drinkBreakdown),
                         ],
                       ),
                     ),
@@ -265,7 +335,7 @@ class _HomePageState extends State<HomePage> {
             onTap: () async {
               final DateTime? picked = await showDatePicker(
                 context: context,
-                initialDate: _selectedDate,
+                initialDate: ref.read(selectedDateNotifierProvider),
                 firstDate: DateTime(2020),
                 lastDate: DateTime(2030),
                 builder: (context, child) {
@@ -282,10 +352,9 @@ class _HomePageState extends State<HomePage> {
                   );
                 },
               );
-                             if (picked != null && picked != _selectedDate) {
-                 setState(() {
-                   _selectedDate = picked;
-                 });
+                             if (picked != null && picked != ref.read(selectedDateNotifierProvider)) {
+                 ref.read(selectedDateNotifierProvider.notifier).setDate(picked);
+                 ref.read(waterIntakeNotifierProvider.notifier).loadIntakesForDate(picked);
                  await _loadData(); // Reload data for the new date
                }
             },
@@ -486,9 +555,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildTodayDrinks() {
-    // Get drink breakdown for today
-    final drinkBreakdown = WaterIntakeService.getDrinkTypeBreakdownForDate(_selectedDate);
+  Widget _buildTodayDrinks(Map<String, int> drinkBreakdown) {
     final drinkEntries = drinkBreakdown.entries.toList();
     
     return Column(
@@ -517,80 +584,71 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
-          child: Row(
-            children: [
-              if (drinkEntries.isNotEmpty) ...[
-                Expanded(
-                  child: _buildDrinkCard(
-                    icon: _getDrinkIcon(drinkEntries[0].key),
-                    name: drinkEntries[0].key,
-                    amount: '${drinkEntries[0].value}ml',
-                  ),
-                ),
-                if (drinkEntries.length > 1) ...[
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _buildDrinkCard(
-                      icon: _getDrinkIcon(drinkEntries[1].key),
-                      name: drinkEntries[1].key,
-                      amount: '${drinkEntries[1].value}ml',
-                    ),
-                  ),
-                ] else ...[
-                  const SizedBox(width: 10),
-                  Expanded(child: Container()), // Empty space
-                ],
-              ] else ...[
-                // Show empty state with message
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.water_drop,
-                          size: 32,
-                          color: Colors.grey.shade400,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'No drinks today',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Tap the + button to add your first drink',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade500,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(child: Container()), // Empty space
-              ],
-              // Add empty space to the right as shown in the design
-              const SizedBox(width: 15),
-              Expanded(
-                child: Container(), // Empty space for potential third card
-              ),
-            ],
-          ),
+          child: drinkEntries.isNotEmpty 
+              ? _buildDrinkCardsGrid(drinkEntries)
+              : _buildEmptyState(),
         ),
       ],
+    );
+  }
+
+  Widget _buildDrinkCardsGrid(List<MapEntry<String, int>> drinkEntries) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        childAspectRatio: 1.2,
+      ),
+      itemCount: drinkEntries.length,
+      itemBuilder: (context, index) {
+        final entry = drinkEntries[index];
+        return _buildDrinkCard(
+          icon: _getDrinkIcon(entry.key),
+          name: entry.key,
+          amount: '${entry.value}ml',
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.water_drop,
+            size: 32,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'No drinks today',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Tap the + button to add your first drink',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 
@@ -656,7 +714,8 @@ class _HomePageState extends State<HomePage> {
   String _getDateText() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final selectedDay = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    final selectedDate = ref.read(selectedDateNotifierProvider);
+    final selectedDay = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
     
     if (selectedDay == today) {
       return 'Today';
@@ -670,7 +729,7 @@ class _HomePageState extends State<HomePage> {
         'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
       ];
-      return '${months[_selectedDate.month - 1]} ${_selectedDate.day}';
+      return '${months[selectedDate.month - 1]} ${selectedDate.day}';
     }
   }
 
@@ -767,9 +826,9 @@ class _HomePageState extends State<HomePage> {
                                     size: 16,
                                   ),
                                   const SizedBox(width: 6),
-                                  const Text(
-                                    '2800ml',
-                                    style: TextStyle(
+                                  Text(
+                                    '${_goalIntake.toInt()}ml',
+                                    style: const TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
                                       color: Colors.black,
@@ -872,6 +931,12 @@ class _HomePageState extends State<HomePage> {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const DashboardPage()),
+            );
+          } else if (index == 2) {
+            // Navigate to Rewards page
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const RewardsPage()),
             );
           } else {
             setState(() {
