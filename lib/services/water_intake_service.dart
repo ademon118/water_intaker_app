@@ -60,27 +60,27 @@ class WaterIntakeService {
       },
       {
         'name': 'Coffee',
-        'icon': 'local_cafe',
+        'icon': 'coffee',
         'defaultAmount': 300,
       },
       {
         'name': 'Tea',
-        'icon': 'local_drink',
+        'icon': 'mug_hot',
         'defaultAmount': 250,
       },
       {
         'name': 'Milk',
-        'icon': 'local_drink',
+        'icon': 'mug_saucer',
         'defaultAmount': 300,
       },
       {
         'name': 'Smoothie',
-        'icon': 'local_bar',
+        'icon': 'blender',
         'defaultAmount': 350,
       },
       {
         'name': 'Juice',
-        'icon': 'local_bar',
+        'icon': 'wine_glass',
         'defaultAmount': 300,
       },
     ];

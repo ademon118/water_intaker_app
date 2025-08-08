@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../../services/water_intake_provider.dart';
 
 class AddWaterPopup extends ConsumerStatefulWidget {
@@ -65,12 +66,16 @@ class _AddWaterPopupState extends ConsumerState<AddWaterPopup>
     switch (iconName) {
       case 'water_drop':
         return Icons.water_drop;
-      case 'local_cafe':
-        return Icons.local_cafe;
-      case 'local_drink':
-        return Icons.local_drink;
-      case 'local_bar':
-        return Icons.local_bar;
+      case 'coffee':
+        return FontAwesomeIcons.coffee;
+      case 'mug_hot':
+        return FontAwesomeIcons.mugHot;
+      case 'mug_saucer':
+        return FontAwesomeIcons.mugSaucer;
+      case 'blender':
+        return FontAwesomeIcons.blender;
+      case 'wine_glass':
+        return FontAwesomeIcons.wineGlass;
       default:
         return Icons.local_bar;
     }

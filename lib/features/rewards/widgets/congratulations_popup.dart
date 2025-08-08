@@ -107,10 +107,10 @@ class _CongratulationsPopupState extends ConsumerState<CongratulationsPopup>
                     ),
                     const SizedBox(height: 10),
                     
-                    // Badge Description
+                    // Badge/Achievement Description
                     Container(
                       child: SelectableText(
-                        'You earned ${widget.badgeName} badge',
+                        'You earned ${widget.badgeName}',
                         style: const TextStyle(
                           fontSize: 16,
                           color: Colors.grey,

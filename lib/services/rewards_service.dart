@@ -13,6 +13,8 @@ class RewardsNotifier extends _$RewardsNotifier {
       'badges': _getBadges(),
       'achievements': _getAchievements(),
       'goalReachedToday': false,
+      'newlyUnlockedBadges': <String>[],
+      'newlyCompletedAchievements': <String>[],
     };
   }
 
@@ -72,13 +74,6 @@ class RewardsNotifier extends _$RewardsNotifier {
   List<Map<String, dynamic>> _getAchievements() {
     return [
       {
-        'id': 'first_steps',
-        'title': 'First Steps',
-        'description': 'Add your first drink to start your hydration journey',
-        'icon': 'water_drop',
-        'completed': false, // Will be updated in checkAndAwardBadges
-      },
-      {
         'id': 'goal_achiever',
         'title': 'Goal Achiever',
         'description': 'Reach your daily water intake goal',
@@ -114,42 +109,60 @@ class RewardsNotifier extends _$RewardsNotifier {
 
   Future<void> unlockBadge(String badgeId) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('badge_$badgeId', true);
+    final wasAlreadyUnlocked = prefs.getBool('badge_$badgeId') ?? false;
     
-    // Update state
-    final currentState = state;
-    final updatedBadges = (currentState['badges'] as List).map((badge) {
-      final badgeMap = Map<String, dynamic>.from(badge);
-      if (badgeMap['id'] == badgeId) {
-        return {...badgeMap, 'unlocked': true};
-      }
-      return badgeMap;
-    }).toList();
-    
-    state = {
-      ...currentState,
-      'badges': updatedBadges,
-    };
+    if (!wasAlreadyUnlocked) {
+      await prefs.setBool('badge_$badgeId', true);
+      
+      // Update state
+      final currentState = state;
+      final updatedBadges = (currentState['badges'] as List).map((badge) {
+        final badgeMap = Map<String, dynamic>.from(badge);
+        if (badgeMap['id'] == badgeId) {
+          return {...badgeMap, 'unlocked': true};
+        }
+        return badgeMap;
+      }).toList();
+      
+      // Add to newly unlocked badges list
+      final newlyUnlockedBadges = List<String>.from(currentState['newlyUnlockedBadges'] ?? []);
+      newlyUnlockedBadges.add(badgeId);
+      
+      state = {
+        ...currentState,
+        'badges': updatedBadges,
+        'newlyUnlockedBadges': newlyUnlockedBadges,
+      };
+    }
   }
 
   Future<void> completeAchievement(String achievementId) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('achievement_$achievementId', true);
+    final wasAlreadyCompleted = prefs.getBool('achievement_$achievementId') ?? false;
     
-    // Update state
-    final currentState = state;
-    final updatedAchievements = (currentState['achievements'] as List).map((achievement) {
-      final achievementMap = Map<String, dynamic>.from(achievement);
-      if (achievementMap['id'] == achievementId) {
-        return {...achievementMap, 'completed': true};
-      }
-      return achievementMap;
-    }).toList();
-    
-    state = {
-      ...currentState,
-      'achievements': updatedAchievements,
-    };
+    if (!wasAlreadyCompleted) {
+      await prefs.setBool('achievement_$achievementId', true);
+      
+      // Update state
+      final currentState = state;
+      final updatedAchievements = (currentState['achievements'] as List).map((achievement) {
+        final achievementMap = Map<String, dynamic>.from(achievement);
+        if (achievementMap['id'] == achievementId) {
+          return {...achievementMap, 'completed': true};
+        }
+        return achievementMap;
+      }).toList();
+      
+      // Add to newly completed achievements list
+      final newlyCompletedAchievements = List<String>.from(currentState['newlyCompletedAchievements'] ?? []);
+      newlyCompletedAchievements.add(achievementId);
+      
+      state = {
+        ...currentState,
+        'achievements': updatedAchievements,
+        'newlyCompletedAchievements': newlyCompletedAchievements,
+      };
+    }
   }
 
   Future<void> checkAndAwardBadges(int totalIntake, double goalIntake, DateTime date) async {
@@ -178,15 +191,14 @@ class RewardsNotifier extends _$RewardsNotifier {
 
     // Check for variety seeker badge
     final drinkTypes = WaterIntakeService.getDrinkTypeBreakdownForDate(date);
-    if (drinkTypes.length >= 5 && !(await _isBadgeUnlocked('variety_seeker'))) {
+    if (drinkTypes.length >= 4 && !(await _isBadgeUnlocked('variety_seeker'))) {
       await unlockBadge('variety_seeker');
     }
 
-    // Check for achievements
-    if (intakes.isNotEmpty && !(await _isAchievementCompleted('first_steps'))) {
-      await completeAchievement('first_steps');
-    }
+    // Check for streak badges
+    await _checkStreakBadges(date);
 
+    // Check for achievements
     if (totalIntake >= goalIntake && !(await _isAchievementCompleted('goal_achiever'))) {
       await completeAchievement('goal_achiever');
     }
@@ -196,43 +208,111 @@ class RewardsNotifier extends _$RewardsNotifier {
     }
   }
 
+  Future<void> _checkStreakBadges(DateTime date) async {
+    // Calculate current streak
+    int currentStreak = 0;
+    DateTime checkDate = date;
+    
+    while (true) {
+      final intakes = WaterIntakeService.getIntakesForDate(checkDate);
+      if (intakes.isNotEmpty) {
+        currentStreak++;
+        checkDate = checkDate.subtract(const Duration(days: 1));
+      } else {
+        break;
+      }
+    }
+
+    // Check for streak master badge (7 days)
+    if (currentStreak >= 7 && !(await _isBadgeUnlocked('streak_master'))) {
+      await unlockBadge('streak_master');
+    }
+
+    // Check for consistency king badge (30 days)
+    if (currentStreak >= 30 && !(await _isBadgeUnlocked('consistency_king'))) {
+      await unlockBadge('consistency_king');
+    }
+  }
+
   Future<void> _loadBadgeStates() async {
-    final prefs = await SharedPreferences.getInstance();
-    final currentState = state;
-    
-    // Update badges with actual unlocked state
-    final updatedBadges = (currentState['badges'] as List).map((badge) {
-      final badgeMap = Map<String, dynamic>.from(badge);
-      final isUnlocked = prefs.getBool('badge_${badgeMap['id']}') ?? false;
-      return {...badgeMap, 'unlocked': isUnlocked};
-    }).toList();
-    
-    // Update achievements with actual completed state
-    final updatedAchievements = (currentState['achievements'] as List).map((achievement) {
-      final achievementMap = Map<String, dynamic>.from(achievement);
-      final isCompleted = prefs.getBool('achievement_${achievementMap['id']}') ?? false;
-      return {...achievementMap, 'completed': isCompleted};
-    }).toList();
-    
-    state = {
-      ...currentState,
-      'badges': updatedBadges,
-      'achievements': updatedAchievements,
-    };
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final currentState = state;
+      
+      // Update badges with actual unlocked state
+      final badges = (currentState['badges'] as List?) ?? [];
+      final updatedBadges = badges.map((badge) {
+        final badgeMap = Map<String, dynamic>.from(badge);
+        final isUnlocked = prefs.getBool('badge_${badgeMap['id']}') ?? false;
+        return {...badgeMap, 'unlocked': isUnlocked};
+      }).toList();
+      
+      // Update achievements with actual completed state
+      final achievements = (currentState['achievements'] as List?) ?? [];
+      final updatedAchievements = achievements.map((achievement) {
+        final achievementMap = Map<String, dynamic>.from(achievement);
+        final isCompleted = prefs.getBool('achievement_${achievementMap['id']}') ?? false;
+        return {...achievementMap, 'completed': isCompleted};
+      }).toList();
+      
+      state = {
+        ...currentState,
+        'badges': updatedBadges,
+        'achievements': updatedAchievements,
+      };
+    } catch (e) {
+      print('Error loading badge states: $e');
+    }
   }
 
   Map<String, dynamic>? getLatestUnlockedBadge() {
-    final badges = (state['badges'] as List).map((e) => Map<String, dynamic>.from(e)).toList();
-    // Find the most recently unlocked badge (check in reverse order of checking)
-    // The badges are checked in this order: first_drop, goal_crusher, hydration_hero, variety_seeker
-    // So we check in reverse order to get the most recent one
-    for (int i = badges.length - 1; i >= 0; i--) {
-      final badge = badges[i];
-      if (badge['unlocked'] == true) {
-        return badge;
+    try {
+      final newlyUnlockedBadges = List<String>.from(state['newlyUnlockedBadges'] ?? []);
+      if (newlyUnlockedBadges.isNotEmpty) {
+        final latestBadgeId = newlyUnlockedBadges.last;
+        final badges = (state['badges'] as List?)?.map((e) => Map<String, dynamic>.from(e)).toList() ?? [];
+        for (final badge in badges) {
+          if (badge['id'] == latestBadgeId) {
+            return badge;
+          }
+        }
       }
+    } catch (e) {
+      print('Error getting latest unlocked badge: $e');
     }
     return null;
+  }
+
+  void clearNewlyUnlockedBadges() {
+    state = {
+      ...state,
+      'newlyUnlockedBadges': <String>[],
+    };
+  }
+
+  Map<String, dynamic>? getLatestCompletedAchievement() {
+    try {
+      final newlyCompletedAchievements = List<String>.from(state['newlyCompletedAchievements'] ?? []);
+      if (newlyCompletedAchievements.isNotEmpty) {
+        final latestAchievementId = newlyCompletedAchievements.last;
+        final achievements = (state['achievements'] as List?)?.map((e) => Map<String, dynamic>.from(e)).toList() ?? [];
+        for (final achievement in achievements) {
+          if (achievement['id'] == latestAchievementId) {
+            return achievement;
+          }
+        }
+      }
+    } catch (e) {
+      print('Error getting latest completed achievement: $e');
+    }
+    return null;
+  }
+
+  void clearNewlyCompletedAchievements() {
+    state = {
+      ...state,
+      'newlyCompletedAchievements': <String>[],
+    };
   }
 
   void resetGoalReachedToday() {

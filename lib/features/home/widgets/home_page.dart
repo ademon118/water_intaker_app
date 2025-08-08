@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../dashboard/widgets/dashboard_page.dart';
 import '../../rewards/widgets/rewards_page.dart';
 import 'add_water_popup.dart';
@@ -40,58 +41,85 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> _loadData() async {
-    final settings = await UserSettingsService.loadSettings();
-    final selectedDate = ref.read(selectedDateNotifierProvider);
-    final totalIntake = ref.read(waterIntakeNotifierProvider.notifier).getTotalIntakeForDate(selectedDate);
-    
-    setState(() {
-      _userSettings = settings;
-      _goalIntake = settings.dailyGoal;
-      _currentIntake = totalIntake.toDouble();
-      _progress = _goalIntake > 0 ? (_currentIntake / _goalIntake).clamp(0.0, 1.0) : 0.0;
-    });
+    try {
+      final settings = await UserSettingsService.loadSettings();
+      final selectedDate = ref.read(selectedDateNotifierProvider);
+      final totalIntake = ref.read(waterIntakeNotifierProvider.notifier).getTotalIntakeForDate(selectedDate);
+      
+      setState(() {
+        _userSettings = settings;
+        _goalIntake = settings.dailyGoal;
+        _currentIntake = totalIntake.toDouble();
+        _progress = _goalIntake > 0 ? (_currentIntake / _goalIntake).clamp(0.0, 1.0) : 0.0;
+      });
+    } catch (e) {
+      print('Error loading data: $e');
+      // Set default values if there's an error
+      setState(() {
+        _goalIntake = 2800.0;
+        _currentIntake = 0.0;
+        _progress = 0.0;
+      });
+    }
   }
 
   Future<void> _addWaterIntake(int amount, String drinkType) async {
-    final selectedDate = ref.read(selectedDateNotifierProvider);
-    final intake = WaterIntake(
-      date: selectedDate,
-      amount: amount,
-      drinkType: drinkType,
-      timestamp: DateTime.now(),
-    );
-    
-    await ref.read(waterIntakeNotifierProvider.notifier).addWaterIntake(intake);
-    await _loadData(); // Reload data to update UI
-    
-    // Reset the congratulations popup flag when adding new drinks
-    setState(() {
-      _hasShownCongratulationsPopup = false;
-    });
-    
-    // Check for rewards and badges
-    final totalIntake = ref.read(waterIntakeNotifierProvider.notifier).getTotalIntakeForDate(selectedDate);
-    final goalIntake = _userSettings?.dailyGoal ?? 2800;
-    
-    await ref.read(rewardsNotifierProvider.notifier).checkAndAwardBadges(
-      totalIntake, 
-      goalIntake, 
-      selectedDate,
-    );
-    
-    // Show success message
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Added ${amount}ml of $drinkType'),
-          backgroundColor: const Color(0xFF00B4D8),
-          duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
+    try {
+      final selectedDate = ref.read(selectedDateNotifierProvider);
+      final intake = WaterIntake(
+        date: selectedDate,
+        amount: amount,
+        drinkType: drinkType,
+        timestamp: DateTime.now(),
       );
+      
+      await ref.read(waterIntakeNotifierProvider.notifier).addWaterIntake(intake);
+      await _loadData(); // Reload data to update UI
+      
+      // Reset the congratulations popup flag when adding new drinks
+      setState(() {
+        _hasShownCongratulationsPopup = false;
+      });
+      
+      // Check for rewards and badges
+      final totalIntake = ref.read(waterIntakeNotifierProvider.notifier).getTotalIntakeForDate(selectedDate);
+      final goalIntake = _userSettings?.dailyGoal ?? 2800;
+      
+      await ref.read(rewardsNotifierProvider.notifier).checkAndAwardBadges(
+        totalIntake, 
+        goalIntake, 
+        selectedDate,
+      );
+      
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Added ${amount}ml of $drinkType'),
+            backgroundColor: const Color(0xFF00B4D8),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.fixed,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error adding water intake: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Error adding drink. Please try again.'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.fixed,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -122,7 +150,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     final waterIntakes = ref.watch(waterIntakeNotifierProvider);
     final drinkBreakdown = ref.read(waterIntakeNotifierProvider.notifier).getDrinkTypeBreakdownForDate(selectedDate);
     final rewardsState = ref.watch(rewardsNotifierProvider);
-    final goalReachedToday = rewardsState['goalReachedToday'] as bool;
+    final goalReachedToday = (rewardsState['goalReachedToday'] as bool?) ?? false;
     
     // Update current intake and progress when data changes
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -135,35 +163,56 @@ class _HomePageState extends ConsumerState<HomePage> {
       }
     });
 
-                // Show congratulations popup when goal is reached
+                // Show congratulations popup for any newly unlocked badge or completed achievement
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (goalReachedToday && mounted && !_hasShownCongratulationsPopup) {
-                final latestBadge = ref.read(rewardsNotifierProvider.notifier).getLatestUnlockedBadge();
-                if (latestBadge != null) {
-                  setState(() {
-                    _hasShownCongratulationsPopup = true;
-                  });
-                  // Add a small delay to ensure the UI is fully updated
-                  Future.delayed(const Duration(milliseconds: 500), () {
-                    if (mounted) {
+              final latestBadge = ref.read(rewardsNotifierProvider.notifier).getLatestUnlockedBadge();
+              final latestAchievement = ref.read(rewardsNotifierProvider.notifier).getLatestCompletedAchievement();
+              
+              if ((latestBadge != null || latestAchievement != null) && mounted && !_hasShownCongratulationsPopup) {
+                setState(() {
+                  _hasShownCongratulationsPopup = true;
+                });
+                // Add a small delay to ensure the UI is fully updated
+                Future.delayed(const Duration(milliseconds: 500), () {
+                  if (mounted) {
+                    // Show badge popup if available, otherwise show achievement popup
+                    final itemToShow = latestBadge ?? latestAchievement;
+                    final isBadge = latestBadge != null;
+                    
+                    if (itemToShow != null) {
+                      // Get the correct name/title based on whether it's a badge or achievement
+                      final displayName = isBadge 
+                          ? (itemToShow['name'] as String?) ?? 'Unknown Badge'
+                          : (itemToShow['title'] as String?) ?? 'Unknown Achievement';
+                      
+                      final description = (itemToShow['description'] as String?) ?? 'No description available';
+                      
                       showDialog(
                         context: context,
                         barrierDismissible: false,
                         builder: (context) => CongratulationsPopup(
-                          badgeName: latestBadge['name'] as String,
-                          badgeDescription: latestBadge['description'] as String,
+                          badgeName: displayName,
+                          badgeDescription: description,
                           onSave: () {
-                            ref.read(rewardsNotifierProvider.notifier).resetGoalReachedToday();
+                            if (isBadge) {
+                              ref.read(rewardsNotifierProvider.notifier).clearNewlyUnlockedBadges();
+                            } else {
+                              ref.read(rewardsNotifierProvider.notifier).clearNewlyCompletedAchievements();
+                            }
                           },
                           onViewBadge: () {
-                            ref.read(rewardsNotifierProvider.notifier).resetGoalReachedToday();
+                            if (isBadge) {
+                              ref.read(rewardsNotifierProvider.notifier).clearNewlyUnlockedBadges();
+                            } else {
+                              ref.read(rewardsNotifierProvider.notifier).clearNewlyCompletedAchievements();
+                            }
                             Navigator.pushNamed(context, '/rewards');
                           },
                         ),
                       );
                     }
-                  });
-                }
+                  }
+                });
               }
             });
 
@@ -185,16 +234,16 @@ class _HomePageState extends ConsumerState<HomePage> {
                   // Main Content
                   Expanded(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(20),
+                      padding: EdgeInsets.all(MediaQuery.of(context).size.width < 600 ? 20 : 30),
                       child: Column(
                         children: [
                           // Progress Circle
                           _buildProgressCircle(),
-                          const SizedBox(height: 30),
+                          SizedBox(height: MediaQuery.of(context).size.width < 600 ? 30 : 40),
 
                           // Info Cards
                           _buildInfoCards(),
-                          const SizedBox(height: 30),
+                          SizedBox(height: MediaQuery.of(context).size.width < 600 ? 30 : 40),
 
                           // Today Drinks
                           _buildTodayDrinks(drinkBreakdown),
@@ -267,14 +316,40 @@ class _HomePageState extends ConsumerState<HomePage> {
       ),
 
       // Floating Action Button (hidden when popup is active)
-      floatingActionButton: (_showAddWaterPopup || _showReminderPopup || _showSetGoalPopup) ? null : FloatingActionButton(
-        onPressed: () {
-          setState(() {
-            _showAddWaterPopup = true;
-          });
+      floatingActionButton: (_showAddWaterPopup || _showReminderPopup || _showSetGoalPopup) ? null : Builder(
+        builder: (context) {
+          final screenWidth = MediaQuery.of(context).size.width;
+          double fabSize;
+          double iconSize;
+          
+          if (screenWidth < 600) {
+            // Mobile
+            fabSize = 56;
+            iconSize = 30;
+          } else if (screenWidth < 1200) {
+            // Tablet
+            fabSize = 64;
+            iconSize = 36;
+          } else {
+            // Desktop
+            fabSize = 72;
+            iconSize = 42;
+          }
+          
+          return SizedBox(
+            width: fabSize,
+            height: fabSize,
+            child: FloatingActionButton(
+              onPressed: () {
+                setState(() {
+                  _showAddWaterPopup = true;
+                });
+              },
+              backgroundColor: const Color(0xFF00B4D8), // 00B4D8 for FAB
+              child: Icon(Icons.add, color: Colors.white, size: iconSize),
+            ),
+          );
         },
-        backgroundColor: const Color(0xFF00B4D8), // 00B4D8 for FAB
-        child: const Icon(Icons.add, color: Colors.white, size: 30),
       ),
 
       // Bottom Navigation (hidden when popup is active)
@@ -283,8 +358,40 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
     Widget _buildHeader() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    // Responsive sizing
+    double horizontalPadding;
+    double verticalPadding;
+    double iconSize;
+    double fontSize;
+    double spacing;
+    
+    if (screenWidth < 600) {
+      // Mobile
+      horizontalPadding = 20;
+      verticalPadding = 15;
+      iconSize = 24;
+      fontSize = 18;
+      spacing = 15;
+    } else if (screenWidth < 1200) {
+      // Tablet
+      horizontalPadding = 30;
+      verticalPadding = 20;
+      iconSize = 28;
+      fontSize = 20;
+      spacing = 20;
+    } else {
+      // Desktop
+      horizontalPadding = 40;
+      verticalPadding = 25;
+      iconSize = 32;
+      fontSize = 24;
+      spacing = 25;
+    }
+    
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
       child: Row(
         children: [
           // Hamburger menu icon
@@ -294,10 +401,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                 _showNavigationDrawer = true;
               });
             },
-            child: Icon(Icons.menu, color: Colors.grey[600], size: 24),
+            child: Icon(Icons.menu, color: Colors.grey[600], size: iconSize),
           ),
           
-          const SizedBox(width: 15),
+          SizedBox(width: spacing),
           
           // Test notification button
           GestureDetector(
@@ -315,15 +422,15 @@ class _HomePageState extends ConsumerState<HomePage> {
               }
             },
             child: Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(iconSize * 0.33),
               decoration: BoxDecoration(
                 color: const Color(0xFF00B4D8),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.notifications,
                 color: Colors.white,
-                size: 20,
+                size: iconSize * 0.83,
               ),
             ),
           ),
@@ -363,17 +470,17 @@ class _HomePageState extends ConsumerState<HomePage> {
               children: [
                 Text(
                   _getDateText(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.black,
-                    fontSize: 18,
+                    fontSize: fontSize,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: spacing * 0.53),
                 Icon(
                   Icons.keyboard_arrow_down,
                   color: Colors.grey[600],
-                  size: 20,
+                  size: iconSize * 0.83,
                 ),
               ],
             ),
@@ -382,26 +489,59 @@ class _HomePageState extends ConsumerState<HomePage> {
           const Spacer(),
 
           // Grid icon
-          Icon(Icons.grid_view, color: Colors.grey[600], size: 24),
+          Icon(Icons.grid_view, color: Colors.grey[600], size: iconSize),
         ],
       ),
     );
   }
 
   Widget _buildProgressCircle() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    
+    // Responsive sizing based on screen size
+    double containerSize;
+    double circleSize;
+    double iconSize;
+    double fontSize;
+    double subFontSize;
+    
+    if (screenWidth < 600) {
+      // Mobile
+      containerSize = screenWidth * 0.7;
+      circleSize = containerSize * 0.88;
+      iconSize = containerSize * 0.24;
+      fontSize = 24;
+      subFontSize = 16;
+    } else if (screenWidth < 1200) {
+      // Tablet
+      containerSize = screenWidth * 0.4;
+      circleSize = containerSize * 0.88;
+      iconSize = containerSize * 0.24;
+      fontSize = 28;
+      subFontSize = 18;
+    } else {
+      // Desktop
+      containerSize = screenWidth * 0.25;
+      circleSize = containerSize * 0.88;
+      iconSize = containerSize * 0.24;
+      fontSize = 32;
+      subFontSize = 20;
+    }
+    
     return Container(
-      width: 250,
-      height: 250,
+      width: containerSize,
+      height: containerSize,
       child: Stack(
         alignment: Alignment.center,
         children: [
           // Progress Circle with exact colors from Figma
           SizedBox(
-            width: 220,
-            height: 220,
+            width: circleSize,
+            height: circleSize,
             child: CircularProgressIndicator(
               value: _progress,
-              strokeWidth: 30,
+              strokeWidth: circleSize * 0.14,
               backgroundColor: const Color(0xFFD9D9D9), // D9D9D9 for circle background
               valueColor: const AlwaysStoppedAnimation<Color>(
                 Color(0xFF00B4D8), // 00B4D8 for filled circle
@@ -415,11 +555,11 @@ class _HomePageState extends ConsumerState<HomePage> {
             children: [
               // Water Drop Icon with Ripple Effect
               Container(
-                width: 60,
-                height: 60,
+                width: iconSize,
+                height: iconSize,
                 decoration: BoxDecoration(
                   color: const Color(0xFF00B4D8), // 00B4D8 for water drop
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(iconSize / 2),
                   boxShadow: [
                     BoxShadow(
                       color: const Color(0xFF00B4D8).withOpacity(0.3),
@@ -429,26 +569,26 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ),
                   ],
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.water_drop,
                   color: Colors.white,
-                  size: 30,
+                  size: iconSize * 0.5,
                 ),
               ),
-              const SizedBox(height: 15),
+              SizedBox(height: iconSize * 0.25),
 
               // Intake Text
               Text(
                 '${_currentIntake.toInt()}ml',
-                style: const TextStyle(
-                  fontSize: 24,
+                style: TextStyle(
+                  fontSize: fontSize,
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
                 ),
               ),
               Text(
                 '/${_goalIntake.toInt()}ml',
-                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                style: TextStyle(fontSize: subFontSize, color: Colors.grey[600]),
               ),
             ],
           ),
@@ -458,10 +598,14 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Widget _buildInfoCards() {
-    return Row(
-      children: [
-        Expanded(
-          child: GestureDetector(
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    // Responsive layout based on screen size
+    if (screenWidth < 600) {
+      // Mobile - Stack vertically
+      return Column(
+        children: [
+          GestureDetector(
             onTap: () {
               setState(() {
                 _showReminderPopup = true;
@@ -474,10 +618,8 @@ class _HomePageState extends ConsumerState<HomePage> {
               iconColor: const Color(0xFFFFFFFF), // FFFFFF for remainder
             ),
           ),
-        ),
-        const SizedBox(width: 15),
-        Expanded(
-          child: GestureDetector(
+          const SizedBox(height: 15),
+          GestureDetector(
             onTap: () {
               setState(() {
                 _showSetGoalPopup = true;
@@ -490,9 +632,46 @@ class _HomePageState extends ConsumerState<HomePage> {
               iconColor: const Color(0xFFFFFFFF), // FFFFFF for goal
             ),
           ),
-        ),
-      ],
-    );
+        ],
+      );
+    } else {
+      // Tablet and Desktop - Side by side
+      return Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _showReminderPopup = true;
+                });
+              },
+              child: _buildInfoCard(
+                title: 'Reminder',
+                value: '59:30',
+                icon: Icons.notifications,
+                iconColor: const Color(0xFFFFFFFF), // FFFFFF for remainder
+              ),
+            ),
+          ),
+          SizedBox(width: screenWidth < 1200 ? 15 : 20),
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _showSetGoalPopup = true;
+                });
+              },
+              child: _buildInfoCard(
+                title: 'Goal',
+                value: '${_goalIntake.toInt()}',
+                icon: Icons.track_changes,
+                iconColor: const Color(0xFFFFFFFF), // FFFFFF for goal
+              ),
+            ),
+          ),
+        ],
+      );
+    }
   }
 
   Widget _buildInfoCard({
@@ -501,8 +680,40 @@ class _HomePageState extends ConsumerState<HomePage> {
     required IconData icon,
     required Color iconColor,
   }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    // Responsive sizing
+    double padding;
+    double titleFontSize;
+    double valueFontSize;
+    double iconSize;
+    double iconContainerSize;
+    
+    if (screenWidth < 600) {
+      // Mobile
+      padding = 16;
+      titleFontSize = 14;
+      valueFontSize = 22;
+      iconSize = 18;
+      iconContainerSize = 36;
+    } else if (screenWidth < 1200) {
+      // Tablet
+      padding = 20;
+      titleFontSize = 16;
+      valueFontSize = 26;
+      iconSize = 20;
+      iconContainerSize = 40;
+    } else {
+      // Desktop
+      padding = 24;
+      titleFontSize = 18;
+      valueFontSize = 30;
+      iconSize = 22;
+      iconContainerSize = 44;
+    }
+    
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(padding),
       decoration: BoxDecoration(
         color: const Color(0xFFFFFFFF), // FFFFFF for card background
         borderRadius: BorderRadius.circular(15),
@@ -523,13 +734,13 @@ class _HomePageState extends ConsumerState<HomePage> {
               children: [
                 Text(
                   title,
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: titleFontSize, color: Colors.grey[600]),
                 ),
-                const SizedBox(height: 5),
+                SizedBox(height: padding * 0.25),
                 Text(
                   value,
-                  style: const TextStyle(
-                    fontSize: 24,
+                  style: TextStyle(
+                    fontSize: valueFontSize,
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
                   ),
@@ -538,16 +749,16 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
           ),
           Container(
-            width: 40,
-            height: 40,
+            width: iconContainerSize,
+            height: iconContainerSize,
             decoration: BoxDecoration(
               color: iconColor,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(iconContainerSize / 2),
             ),
             child: Icon(
               icon,
               color: const Color(0xFF000000), // 000000 for icon color
-              size: 20,
+              size: iconSize,
             ),
           ),
         ],
@@ -593,24 +804,53 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Widget _buildDrinkCardsGrid(List<MapEntry<String, int>> drinkEntries) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
-        childAspectRatio: 1.2,
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    // Responsive grid configuration
+    int crossAxisCount;
+    double childAspectRatio;
+    double spacing;
+    
+    if (screenWidth < 600) {
+      // Mobile
+      crossAxisCount = 2;
+      childAspectRatio = 1.4;
+      spacing = 10;
+    } else if (screenWidth < 1200) {
+      // Tablet
+      crossAxisCount = 3;
+      childAspectRatio = 1.3;
+      spacing = 15;
+    } else {
+      // Desktop
+      crossAxisCount = 4;
+      childAspectRatio = 1.2;
+      spacing = 20;
+    }
+    
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.4,
       ),
-      itemCount: drinkEntries.length,
-      itemBuilder: (context, index) {
-        final entry = drinkEntries[index];
-        return _buildDrinkCard(
-          icon: _getDrinkIcon(entry.key),
-          name: entry.key,
-          amount: '${entry.value}ml',
-        );
-      },
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          crossAxisSpacing: spacing,
+          mainAxisSpacing: spacing,
+          childAspectRatio: childAspectRatio,
+        ),
+        itemCount: drinkEntries.length,
+        itemBuilder: (context, index) {
+          final entry = drinkEntries[index];
+          return _buildDrinkCard(
+            icon: _getDrinkIcon(entry.key),
+            name: entry.key,
+            amount: '${entry.value}ml',
+          );
+        },
+      ),
     );
   }
 
@@ -657,15 +897,15 @@ class _HomePageState extends ConsumerState<HomePage> {
       case 'water':
         return Icons.water_drop;
       case 'coffee':
-        return Icons.local_cafe;
+        return FontAwesomeIcons.coffee;
       case 'tea':
-        return Icons.local_drink;
+        return FontAwesomeIcons.mugHot;
       case 'milk':
-        return Icons.local_drink;
+        return FontAwesomeIcons.mugSaucer;
       case 'smoothie':
-        return Icons.local_bar;
+        return FontAwesomeIcons.blender;
       case 'juice':
-        return Icons.local_bar;
+        return FontAwesomeIcons.wineGlass;
       default:
         return Icons.local_bar;
     }
@@ -676,35 +916,76 @@ class _HomePageState extends ConsumerState<HomePage> {
     required String name,
     required String amount,
   }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    // Responsive sizing
+    double padding;
+    double iconSize;
+    double nameFontSize;
+    double amountFontSize;
+    double spacing;
+    
+    if (screenWidth < 600) {
+      // Mobile
+      padding = 12;
+      iconSize = 32;
+      nameFontSize = 14;
+      amountFontSize = 12;
+      spacing = 8;
+    } else if (screenWidth < 1200) {
+      // Tablet
+      padding = 15;
+      iconSize = 36;
+      nameFontSize = 16;
+      amountFontSize = 14;
+      spacing = 10;
+    } else {
+      // Desktop
+      padding = 18;
+      iconSize = 40;
+      nameFontSize = 18;
+      amountFontSize = 16;
+      spacing = 12;
+    }
+    
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 15),
+      padding: EdgeInsets.symmetric(vertical: padding, horizontal: padding * 0.75),
       decoration: BoxDecoration(
         color: const Color(0xFFA2D2FF), // A2D2FF for today drinks background
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: const Color(0xFF000000), size: 35), // 000000 for icon color, larger size
-          const SizedBox(height: 12),
-          Text(
-            name,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF000000), // 000000 for text color
+          Icon(icon, color: const Color(0xFF000000), size: iconSize), // 000000 for icon color
+          SizedBox(height: spacing),
+          Flexible(
+            child: Text(
+              name,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: nameFontSize,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF000000), // 000000 for text color
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            amount, 
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14, 
-              color: const Color(0xFF000000),
-              fontWeight: FontWeight.w500,
-            ), // 000000 for amount text
+          SizedBox(height: spacing * 0.5),
+          Flexible(
+            child: Text(
+              amount, 
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: amountFontSize, 
+                color: const Color(0xFF000000),
+                fontWeight: FontWeight.w500,
+              ), // 000000 for amount text
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
@@ -734,9 +1015,24 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Widget _buildNavigationDrawer() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    // Responsive drawer width
+    double drawerWidth;
+    if (screenWidth < 600) {
+      // Mobile - 75% of screen width
+      drawerWidth = screenWidth * 0.75;
+    } else if (screenWidth < 1200) {
+      // Tablet - 50% of screen width
+      drawerWidth = screenWidth * 0.5;
+    } else {
+      // Desktop - 400px max width
+      drawerWidth = 400;
+    }
+    
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
-      width: MediaQuery.of(context).size.width * 0.75, // 75% of screen width
+      width: drawerWidth,
       child: Container(
         decoration: const BoxDecoration(
           color: Colors.white,
@@ -911,6 +1207,26 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Widget _buildBottomNavigation() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    // Responsive sizing
+    double iconSize;
+    double fontSize;
+    
+    if (screenWidth < 600) {
+      // Mobile
+      iconSize = 24;
+      fontSize = 12;
+    } else if (screenWidth < 1200) {
+      // Tablet
+      iconSize = 28;
+      fontSize = 14;
+    } else {
+      // Desktop
+      iconSize = 32;
+      fontSize = 16;
+    }
+    
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -948,16 +1264,25 @@ class _HomePageState extends ConsumerState<HomePage> {
         backgroundColor: Colors.white,
         selectedItemColor: const Color(0xFF4A90E2),
         unselectedItemColor: Colors.grey[600],
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
-        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w400),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+        selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: fontSize),
+        unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w400, fontSize: fontSize),
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart),
+            icon: Icon(Icons.home, size: iconSize), 
+            label: 'Home'
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.bar_chart, size: iconSize),
             label: 'Statistics',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.star), label: 'Rewards'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Setting'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.star, size: iconSize), 
+            label: 'Rewards'
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings, size: iconSize), 
+            label: 'Setting'
+          ),
         ],
       ),
     );
