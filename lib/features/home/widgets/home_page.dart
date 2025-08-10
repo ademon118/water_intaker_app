@@ -3,9 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../dashboard/widgets/dashboard_page.dart';
 import '../../rewards/widgets/rewards_page.dart';
+import '../../settings/widgets/settings_page.dart';
+import '../../statistics/widgets/statistics_page.dart';
 import 'add_water_popup.dart';
 import 'reminder_popup.dart';
 import 'set_goal_popup.dart';
+import '../../rewards/widgets/congratulations_popup.dart';
 import '../../../services/water_intake_service.dart';
 import '../../../services/user_settings_service.dart';
 import '../../../services/reminder_service.dart';
@@ -13,7 +16,6 @@ import '../../../services/water_intake_provider.dart';
 import '../../../services/rewards_service.dart';
 import '../../../models/water_intake.dart';
 import '../../../models/user_settings.dart';
-import '../../rewards/widgets/congratulations_popup.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -33,11 +35,18 @@ class _HomePageState extends ConsumerState<HomePage> {
   bool _showNavigationDrawer = false;
   bool _hasShownCongratulationsPopup = false;
   UserSettings? _userSettings;
+  final PageController _pageController = PageController();
 
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -141,7 +150,75 @@ class _HomePageState extends ConsumerState<HomePage> {
       snoozeDuration: snoozeDuration,
     );
     
+    // Show success message with next reminder time
+    if (mounted && mode != 'Off') {
+      final intervalMinutes = _getDurationInMinutes(snoozeDuration);
+      final nextReminderTime = _getNextReminderTime(intervalMinutes);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Reminders set! Next reminder in ${intervalMinutes} minutes'),
+          backgroundColor: const Color(0xFF00B4D8),
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.fixed,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
+    
     await _loadData(); // Reload data to update UI
+  }
+
+  int _getDurationInMinutes(int snoozeDuration) {
+    switch (snoozeDuration) {
+      case 0: return 30; // 0.5h = 30 minutes
+      case 1: return 60; // 1h = 60 minutes
+      case 2: return 90; // 1.5h = 90 minutes
+      case 3: return 120; // 2h = 120 minutes
+      default: return 60;
+    }
+  }
+
+  DateTime _getNextReminderTime(int intervalMinutes) {
+    final now = DateTime.now();
+    DateTime startTime = DateTime(now.year, now.month, now.day, 8, 0);
+    
+    if (now.isAfter(startTime)) {
+      startTime = startTime.add(const Duration(days: 1));
+    }
+    
+    DateTime nextTime = startTime;
+    while (nextTime.isBefore(now)) {
+      nextTime = nextTime.add(Duration(minutes: intervalMinutes));
+    }
+    
+    return nextTime;
+  }
+
+  String _getReminderDisplayValue() {
+    if (_userSettings == null || !_userSettings!.reminderEnabled) {
+      return 'Off';
+    }
+    
+    final intervalMinutes = _getDurationInMinutes(_userSettings!.snoozeDuration);
+    final nextReminderTime = _getNextReminderTime(intervalMinutes);
+    final now = DateTime.now();
+    final difference = nextReminderTime.difference(now);
+    
+    if (difference.isNegative) {
+      return '${intervalMinutes}m';
+    }
+    
+    final hours = difference.inHours;
+    final minutes = difference.inMinutes % 60;
+    
+    if (hours > 0) {
+      return '${hours}h ${minutes}m';
+    } else {
+      return '${minutes}m';
+    }
   }
 
   @override
@@ -219,34 +296,47 @@ class _HomePageState extends ConsumerState<HomePage> {
 
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9), // F1F5F9 for overall background
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        children: [
+          _buildHomeContent(),
+          const StatisticsPage(),
+          const RewardsPage(),
+          const SettingsPage(),
+        ],
+      ),
+      bottomNavigationBar: _buildBottomNavigation(),
+    );
+  }
+
+  Widget _buildHomeContent() {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F5F5),
       body: Stack(
         children: [
-                  // Main content with dimming effect
-        Opacity(
-          opacity: (_showAddWaterPopup || _showReminderPopup || _showSetGoalPopup || _showNavigationDrawer) ? 0.3 : 1.0, // Dim background when popup is shown
+          // Main content with dimming effect
+          Opacity(
+            opacity: (_showAddWaterPopup || _showReminderPopup || _showSetGoalPopup || _showNavigationDrawer) ? 0.3 : 1.0,
             child: SafeArea(
               child: Column(
                 children: [
-                  // Header
                   _buildHeader(),
-
-                  // Main Content
                   Expanded(
                     child: SingleChildScrollView(
-                      padding: EdgeInsets.all(MediaQuery.of(context).size.width < 600 ? 20 : 30),
+                      padding: const EdgeInsets.all(20),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Progress Circle
                           _buildProgressCircle(),
-                          SizedBox(height: MediaQuery.of(context).size.width < 600 ? 30 : 40),
-
-                          // Info Cards
+                          const SizedBox(height: 20),
                           _buildInfoCards(),
-                          SizedBox(height: MediaQuery.of(context).size.width < 600 ? 30 : 40),
-
-                          // Today Drinks
-                          _buildTodayDrinks(drinkBreakdown),
+                          const SizedBox(height: 20),
+                          _buildTodayDrinks(ref.read(waterIntakeNotifierProvider.notifier).getDrinkTypeBreakdownForDate(ref.watch(selectedDateNotifierProvider))),
                         ],
                       ),
                     ),
@@ -314,8 +404,6 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
         ],
       ),
-
-      // Floating Action Button (hidden when popup is active)
       floatingActionButton: (_showAddWaterPopup || _showReminderPopup || _showSetGoalPopup) ? null : Builder(
         builder: (context) {
           final screenWidth = MediaQuery.of(context).size.width;
@@ -345,15 +433,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                   _showAddWaterPopup = true;
                 });
               },
-              backgroundColor: const Color(0xFF00B4D8), // 00B4D8 for FAB
+              backgroundColor: const Color(0xFF00B4D8),
               child: Icon(Icons.add, color: Colors.white, size: iconSize),
             ),
           );
         },
       ),
-
-      // Bottom Navigation (hidden when popup is active)
-      bottomNavigationBar: (_showAddWaterPopup || _showReminderPopup || _showSetGoalPopup) ? null : _buildBottomNavigation(),
     );
   }
 
@@ -613,7 +698,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             },
             child: _buildInfoCard(
               title: 'Reminder',
-              value: '59:30',
+              value: _getReminderDisplayValue(),
               icon: Icons.notifications,
               iconColor: const Color(0xFFFFFFFF), // FFFFFF for remainder
             ),
@@ -645,12 +730,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                   _showReminderPopup = true;
                 });
               },
-              child: _buildInfoCard(
-                title: 'Reminder',
-                value: '59:30',
-                icon: Icons.notifications,
-                iconColor: const Color(0xFFFFFFFF), // FFFFFF for remainder
-              ),
+                          child: _buildInfoCard(
+              title: 'Reminder',
+              value: _getReminderDisplayValue(),
+              icon: Icons.notifications,
+              iconColor: const Color(0xFFFFFFFF), // FFFFFF for remainder
+            ),
             ),
           ),
           SizedBox(width: screenWidth < 1200 ? 15 : 20),
@@ -1242,23 +1327,14 @@ class _HomePageState extends ConsumerState<HomePage> {
       child: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
-          if (index == 1) {
-            // Navigate to Dashboard when Statistics is clicked
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const DashboardPage()),
-            );
-          } else if (index == 2) {
-            // Navigate to Rewards page
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const RewardsPage()),
-            );
-          } else {
-            setState(() {
-              _currentIndex = index;
-            });
-          }
+          setState(() {
+            _currentIndex = index;
+          });
+          _pageController.animateToPage(
+            index,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
         },
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,

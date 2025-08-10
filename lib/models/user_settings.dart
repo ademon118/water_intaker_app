@@ -4,6 +4,8 @@ class UserSettings {
   final String reminderMode;
   final int snoozeDuration;
   final DateTime? lastReminderTime;
+  final String unit;
+  final bool isDarkMode;
 
   UserSettings({
     required this.dailyGoal,
@@ -11,6 +13,8 @@ class UserSettings {
     required this.reminderMode,
     required this.snoozeDuration,
     this.lastReminderTime,
+    this.unit = 'ml',
+    this.isDarkMode = false,
   });
 
   Map<String, dynamic> toJson() {
@@ -20,6 +24,8 @@ class UserSettings {
       'reminderMode': reminderMode,
       'snoozeDuration': snoozeDuration,
       'lastReminderTime': lastReminderTime?.millisecondsSinceEpoch,
+      'unit': unit,
+      'isDarkMode': isDarkMode,
     };
   }
 
@@ -32,6 +38,8 @@ class UserSettings {
       lastReminderTime: json['lastReminderTime'] != null
           ? DateTime.fromMillisecondsSinceEpoch(json['lastReminderTime'])
           : null,
+      unit: json['unit'] ?? 'ml',
+      isDarkMode: json['isDarkMode'] ?? false,
     );
   }
 
@@ -41,6 +49,8 @@ class UserSettings {
     String? reminderMode,
     int? snoozeDuration,
     DateTime? lastReminderTime,
+    String? unit,
+    bool? isDarkMode,
   }) {
     return UserSettings(
       dailyGoal: dailyGoal ?? this.dailyGoal,
@@ -48,6 +58,8 @@ class UserSettings {
       reminderMode: reminderMode ?? this.reminderMode,
       snoozeDuration: snoozeDuration ?? this.snoozeDuration,
       lastReminderTime: lastReminderTime ?? this.lastReminderTime,
+      unit: unit ?? this.unit,
+      isDarkMode: isDarkMode ?? this.isDarkMode,
     );
   }
 } 

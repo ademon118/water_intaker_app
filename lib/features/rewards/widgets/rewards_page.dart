@@ -40,38 +40,55 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        title: const Text(
-          'Rewards',
-          style: TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+      body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Progress Section
-            _buildProgressSection(totalIntake, goalIntake, progress),
-            const SizedBox(height: 30),
+            _buildHeader(),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Progress Section
+                    _buildProgressSection(totalIntake, goalIntake, progress),
+                    const SizedBox(height: 30),
 
-            // Badges Section
-            _buildBadgesSection(),
-            const SizedBox(height: 30),
+                    // Badges Section
+                    _buildBadgesSection(),
+                    const SizedBox(height: 30),
 
-            // Achievements Section
-            _buildAchievementsSection(),
+                    // Achievements Section
+                    _buildAchievementsSection(),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+      child: Row(
+        children: [
+          const SizedBox(width: 48),
+          const Expanded(
+            child: Text(
+              'Rewards',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+          const SizedBox(width: 48),
+        ],
       ),
     );
   }

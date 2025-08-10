@@ -39,8 +39,6 @@ class _ReminderPopupState extends State<ReminderPopup>
     },
   ];
 
-  final List<String> _snoozeDurations = ['0.5h', '1h', '1.5h', '2h'];
-
   @override
   void initState() {
     super.initState();
@@ -77,13 +75,23 @@ class _ReminderPopupState extends State<ReminderPopup>
     });
   }
 
+  int _getDurationInMinutes(int snoozeDuration) {
+    switch (snoozeDuration) {
+      case 0: return 30; // 0.5h = 30 minutes
+      case 1: return 60; // 1h = 60 minutes
+      case 2: return 90; // 1.5h = 90 minutes
+      case 3: return 120; // 2h = 120 minutes
+      default: return 60;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _animationController,
       builder: (context, child) {
         return Container(
-          color: Colors.black.withOpacity(0.5 * _fadeAnimation.value),
+          color: Colors.black.withValues(alpha: 0.5 * _fadeAnimation.value),
           child: Column(
             children: [
               // Transparent area to close popup
@@ -185,8 +193,8 @@ class _ReminderPopupState extends State<ReminderPopup>
                         child: SizedBox(
                           width: double.infinity,
                           height: 50,
-                                                      child: ElevatedButton(
-                                                          onPressed: (_selectedReminderMode >= 0 && _selectedSnoozeDuration >= 0) ? () async {
+                          child: ElevatedButton(
+                            onPressed: (_selectedReminderMode >= 0 && _selectedSnoozeDuration >= 0) ? () async {
                               // Request permissions if needed
                               if (_reminderModes[_selectedReminderMode]['name'] != 'Off') {
                                 await ReminderService.requestPermissions();
@@ -196,7 +204,7 @@ class _ReminderPopupState extends State<ReminderPopup>
                               if (widget.onSaveReminder != null) {
                                 final selectedMode = _reminderModes[_selectedReminderMode]['name'];
                                 final selectedDuration = _selectedSnoozeDuration;
-                                widget.onSaveReminder!(selectedMode, selectedDuration);
+                                await widget.onSaveReminder!(selectedMode, selectedDuration);
                               }
                               _closePopup();
                             } : null,
@@ -225,6 +233,16 @@ class _ReminderPopupState extends State<ReminderPopup>
                       GestureDetector(
                         onTap: () async {
                           await ReminderService.showTestNotification();
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Test notification sent!'),
+                                backgroundColor: Color(0xFF00B4D8),
+                                duration: Duration(seconds: 2),
+                                behavior: SnackBarBehavior.fixed,
+                              ),
+                            );
+                          }
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -234,6 +252,40 @@ class _ReminderPopupState extends State<ReminderPopup>
                           ),
                           child: const Text(
                             'Test Notification',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF00B4D8), // 00B4D8 blue color
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 10),
+                      
+                      // Show Pending Reminders button
+                      GestureDetector(
+                        onTap: () async {
+                          final pendingInfo = await ReminderService.getPendingRemindersInfo();
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Pending reminders: $pendingInfo'),
+                                backgroundColor: const Color(0xFF00B4D8),
+                                duration: const Duration(seconds: 3),
+                                behavior: SnackBarBehavior.fixed,
+                              ),
+                            );
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: const Color(0xFF00B4D8)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'Show Pending Reminders',
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,

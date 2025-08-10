@@ -43,44 +43,69 @@ class ReminderService {
     }
 
     // Calculate reminder intervals based on snooze duration
-    final durationInMinutes = _getDurationInMinutes(snoozeDuration);
+    final intervalInMinutes = _getDurationInMinutes(snoozeDuration);
     
-    // Schedule multiple reminders throughout the day
+    // Get current time
     final now = DateTime.now();
-    final startTime = DateTime(now.year, now.month, now.day, 8, 0); // Start at 8 AM
     
-    // Schedule reminders every 2-3 hours during waking hours
-    final reminderTimes = [
-      startTime,
-      startTime.add(const Duration(hours: 2)),
-      startTime.add(const Duration(hours: 4)),
-      startTime.add(const Duration(hours: 6)),
-      startTime.add(const Duration(hours: 8)),
-      startTime.add(const Duration(hours: 10)),
-    ];
-
-    for (int i = 0; i < reminderTimes.length; i++) {
-      final reminderTime = reminderTimes[i];
-      
+    // Start time for reminders (8 AM today or tomorrow if it's already past 8 AM)
+    DateTime startTime = DateTime(now.year, now.month, now.day, 8, 0);
+    if (now.isAfter(startTime)) {
+      // If it's already past 8 AM, start from tomorrow
+      startTime = startTime.add(const Duration(days: 1));
+    }
+    
+    // Calculate end time (10 PM)
+    final endTime = DateTime(now.year, now.month, now.day, 22, 0);
+    
+    // Schedule recurring reminders throughout the day
+    int notificationId = 1;
+    DateTime currentTime = startTime;
+    
+    while (currentTime.isBefore(endTime)) {
       // Only schedule if the time hasn't passed today
-      if (reminderTime.isAfter(now)) {
+      if (currentTime.isAfter(now)) {
         await _scheduleNotification(
-          id: i + 1,
+          id: notificationId,
           title: 'Time to Hydrate! 💧',
           body: 'Stay healthy by drinking water regularly.',
-          scheduledTime: reminderTime,
+          scheduledTime: currentTime,
           mode: mode,
         );
+        notificationId++;
+      }
+      
+      // Move to next reminder time
+      currentTime = currentTime.add(Duration(minutes: intervalInMinutes));
+    }
+    
+    // Also schedule reminders for the next 7 days
+    for (int day = 1; day <= 7; day++) {
+      final nextDayStart = startTime.add(Duration(days: day));
+      currentTime = nextDayStart;
+      
+      while (currentTime.isBefore(nextDayStart.add(const Duration(hours: 14)))) { // 14 hours from 8 AM to 10 PM
+        await _scheduleNotification(
+          id: notificationId,
+          title: 'Time to Hydrate! 💧',
+          body: 'Stay healthy by drinking water regularly.',
+          scheduledTime: currentTime,
+          mode: mode,
+        );
+        notificationId++;
+        
+        // Move to next reminder time
+        currentTime = currentTime.add(Duration(minutes: intervalInMinutes));
       }
     }
   }
 
   static int _getDurationInMinutes(int snoozeDuration) {
     switch (snoozeDuration) {
-      case 0: return 30; // 0.5h
-      case 1: return 60; // 1h
-      case 2: return 90; // 1.5h
-      case 3: return 120; // 2h
+      case 0: return 30; // 0.5h = 30 minutes
+      case 1: return 60; // 1h = 60 minutes
+      case 2: return 90; // 1.5h = 90 minutes
+      case 3: return 120; // 2h = 120 minutes
       default: return 60;
     }
   }
@@ -103,6 +128,8 @@ class ReminderService {
       sound: RawResourceAndroidNotificationSound('notification_sound'),
       playSound: true,
       enableVibration: true,
+      autoCancel: true,
+      ongoing: false,
     );
 
     const iosDetails = DarwinNotificationDetails(
@@ -167,6 +194,19 @@ class ReminderService {
       'This is a test notification for water intake reminder.',
       details,
     );
+  }
+
+  static Future<String> getPendingRemindersInfo() async {
+    final pendingReminders = await getPendingReminders();
+    if (pendingReminders.isEmpty) {
+      return 'No pending reminders';
+    }
+    
+    final now = DateTime.now();
+    final nextReminder = pendingReminders.first;
+    // Note: PendingNotificationRequest doesn't have scheduledDate property
+    // We'll return a generic message for now
+    return '${pendingReminders.length} reminders scheduled';
   }
 
   static Future<bool> areNotificationsEnabled() async {

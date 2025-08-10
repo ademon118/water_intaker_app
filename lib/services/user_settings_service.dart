@@ -64,4 +64,16 @@ class UserSettingsService {
     final updatedSettings = settings.copyWith(lastReminderTime: time);
     await saveSettings(updatedSettings);
   }
+
+  static Future<void> updateUnit(String unit) async {
+    final settings = await loadSettings();
+    final updatedSettings = settings.copyWith(unit: unit);
+    await saveSettings(updatedSettings);
+  }
+
+  static Future<void> updateAppearance(bool isDarkMode) async {
+    final settings = await loadSettings();
+    final updatedSettings = settings.copyWith(isDarkMode: isDarkMode);
+    await saveSettings(updatedSettings);
+  }
 } 

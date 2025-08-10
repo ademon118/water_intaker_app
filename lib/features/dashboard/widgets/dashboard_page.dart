@@ -59,10 +59,7 @@ class _DashboardPageState extends State<DashboardPage> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
       child: Row(
         children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
-          ),
+          const SizedBox(width: 48), // Balance the layout
           const Expanded(
             child: Text(
               'Dashboard',
@@ -74,7 +71,7 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ),
           ),
-          const SizedBox(width: 48), // Balance the back button
+          const SizedBox(width: 48), // Balance the layout
         ],
       ),
     );
