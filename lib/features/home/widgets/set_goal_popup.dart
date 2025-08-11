@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../services/app_settings_provider.dart';
 
-class SetGoalPopup extends StatefulWidget {
+class SetGoalPopup extends ConsumerStatefulWidget {
   final VoidCallback onClose;
   final double currentGoal;
   final Function(double newGoal)? onSaveGoal;
@@ -13,10 +15,10 @@ class SetGoalPopup extends StatefulWidget {
   });
 
   @override
-  State<SetGoalPopup> createState() => _SetGoalPopupState();
+  ConsumerState<SetGoalPopup> createState() => _SetGoalPopupState();
 }
 
-class _SetGoalPopupState extends State<SetGoalPopup>
+class _SetGoalPopupState extends ConsumerState<SetGoalPopup>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _slideAnimation;
@@ -28,7 +30,9 @@ class _SetGoalPopupState extends State<SetGoalPopup>
   @override
   void initState() {
     super.initState();
-    _goalController = TextEditingController(text: widget.currentGoal.toInt().toString());
+    // Convert current goal to display unit for the text field
+    final displayGoal = ref.read(appSettingsProvider.notifier).convertToDisplayUnit(widget.currentGoal);
+    _goalController = TextEditingController(text: displayGoal.toStringAsFixed(1));
     _checkGoalValidity();
     
     _animationController = AnimationController(
@@ -79,8 +83,23 @@ class _SetGoalPopupState extends State<SetGoalPopup>
     });
   }
 
+  void _saveGoal() {
+    if (_isGoalValid) {
+      final displayGoal = double.parse(_goalController.text);
+      // Convert from display unit to ml for storage
+      final goalInMl = ref.read(appSettingsProvider.notifier).convertFromDisplayUnit(displayGoal);
+      
+      if (widget.onSaveGoal != null) {
+        widget.onSaveGoal!(goalInMl);
+      }
+      _closePopup();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final unitLabel = ref.read(appSettingsProvider.notifier).getUnitAbbreviation();
+    
     return AnimatedBuilder(
       animation: _animationController,
       builder: (context, child) {
@@ -102,137 +121,128 @@ class _SetGoalPopupState extends State<SetGoalPopup>
               Transform.translate(
                 offset: Offset(0, 100 * _slideAnimation.value),
                 child: Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(20),
-                      topRight: Radius.circular(20),
-                    ),
+                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.all(25),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        spreadRadius: 5,
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Handle bar
+                      // Header
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.track_changes,
+                            color: Color(0xFF00B4D8),
+                            size: 28,
+                          ),
+                          const SizedBox(width: 15),
+                          Expanded(
+                            child: Text(
+                              'Set Daily Goal',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: _closePopup,
+                            icon: const Icon(Icons.close),
+                            color: Colors.grey[600],
+                          ),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 25),
+                      
+                      // Goal input field
                       Container(
-                        margin: const EdgeInsets.only(top: 12, bottom: 20),
-                        width: 40,
-                        height: 4,
                         decoration: BoxDecoration(
-                          color: Colors.grey[400],
-                          borderRadius: BorderRadius.circular(2),
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _isGoalValid ? Colors.green : Colors.grey[300]!,
+                            width: 2,
+                          ),
                         ),
-                      ),
-                      
-                      // Title
-                      const Text(
-                        'Set A New Goal',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 30),
-                      
-                      // Enter the goal section
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Enter the goal',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black87,
-                              ),
+                        child: TextField(
+                          controller: _goalController,
+                          keyboardType: TextInputType.number,
+                          onChanged: (value) => _checkGoalValidity(),
+                          decoration: InputDecoration(
+                            hintText: 'Enter your daily goal',
+                            suffixText: unitLabel,
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 18,
                             ),
-                            const SizedBox(height: 15),
-                            
-                            // Goal input field
-                            Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F9), // Light grey background
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: _isGoalValid 
-                                      ? const Color(0xFF00B4D8) 
-                                      : Colors.grey[300]!,
-                                  width: 1,
-                                ),
-                              ),
-                              child: TextField(
-                                controller: _goalController,
-                                keyboardType: TextInputType.number,
-                                onChanged: (value) {
-                                  _checkGoalValidity();
-                                },
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.black87,
-                                ),
-                                decoration: const InputDecoration(
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 16,
-                                  ),
-                                  border: InputBorder.none,
-                                  hintText: 'Enter goal amount',
-                                  hintStyle: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 30),
-                      
-                      // Save button
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            onPressed: _isGoalValid ? () {
-                              // Save goal logic here
-                              final newGoal = double.tryParse(_goalController.text);
-                              if (newGoal != null && widget.onSaveGoal != null) {
-                                widget.onSaveGoal!(newGoal);
-                                _closePopup();
-                              }
-                            } : null,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF00B4D8), // 00B4D8 button color
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: 0,
-                            ),
-                            child: const Text(
-                              'Save',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                          ),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                       ),
                       
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 20),
+                      
+                      // Info text
+                      Text(
+                        'Set a realistic daily water intake goal to stay hydrated and track your progress.',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                          height: 1.4,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      
+                      const SizedBox(height: 25),
+                      
+                      // Save button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: _isGoalValid ? _saveGoal : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF00B4D8),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            'Save Goal',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
+              
+              // Bottom spacing
+              SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 20),
             ],
           ),
         );

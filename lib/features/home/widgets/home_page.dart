@@ -14,6 +14,7 @@ import '../../../services/user_settings_service.dart';
 import '../../../services/reminder_service.dart';
 import '../../../services/water_intake_provider.dart';
 import '../../../services/rewards_service.dart';
+import '../../../services/app_settings_provider.dart';
 import '../../../models/water_intake.dart';
 import '../../../models/user_settings.dart';
 
@@ -27,14 +28,12 @@ class HomePage extends ConsumerStatefulWidget {
 class _HomePageState extends ConsumerState<HomePage> {
   int _currentIndex = 0;
   double _currentIntake = 0;
-  double _goalIntake = 2800;
   double _progress = 0.0;
   bool _showAddWaterPopup = false;
   bool _showReminderPopup = false;
   bool _showSetGoalPopup = false;
   bool _showNavigationDrawer = false;
   bool _hasShownCongratulationsPopup = false;
-  UserSettings? _userSettings;
   final PageController _pageController = PageController();
 
   @override
@@ -51,23 +50,19 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   Future<void> _loadData() async {
     try {
-      final settings = await UserSettingsService.loadSettings();
       final selectedDate = ref.read(selectedDateNotifierProvider);
       final totalIntake = ref.read(waterIntakeNotifierProvider.notifier).getTotalIntakeForDate(selectedDate);
       
       setState(() {
-        _userSettings = settings;
-        _goalIntake = settings.dailyGoal;
         _currentIntake = totalIntake.toDouble();
-        _progress = _goalIntake > 0 ? (_currentIntake / _goalIntake).clamp(0.0, 1.0) : 0.0;
+        // Progress will be calculated in build method using watched goal value
       });
     } catch (e) {
       print('Error loading data: $e');
       // Set default values if there's an error
       setState(() {
-        _goalIntake = 2800.0;
         _currentIntake = 0.0;
-        _progress = 0.0;
+        // Progress will be calculated in build method using watched goal value
       });
     }
   }
@@ -92,19 +87,23 @@ class _HomePageState extends ConsumerState<HomePage> {
       
       // Check for rewards and badges
       final totalIntake = ref.read(waterIntakeNotifierProvider.notifier).getTotalIntakeForDate(selectedDate);
-      final goalIntake = _userSettings?.dailyGoal ?? 2800;
+      final currentGoalIntake = ref.read(appSettingsProvider).dailyGoal;
       
       await ref.read(rewardsNotifierProvider.notifier).checkAndAwardBadges(
         totalIntake, 
-        goalIntake, 
+        currentGoalIntake, 
         selectedDate,
       );
       
       // Show success message
       if (mounted) {
+        final unit = ref.read(appSettingsProvider).unit;
+        final displayAmount = ref.read(appSettingsProvider.notifier).convertToDisplayUnit(amount.toDouble());
+        final unitLabel = ref.read(appSettingsProvider.notifier).getUnitAbbreviation();
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Added ${amount}ml of $drinkType'),
+            content: Text('Added ${displayAmount.toStringAsFixed(1)}$unitLabel of $drinkType'),
             backgroundColor: const Color(0xFF00B4D8),
             duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.fixed,
@@ -133,8 +132,8 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> _saveGoal(double newGoal) async {
-    await UserSettingsService.updateDailyGoal(newGoal);
-    await _loadData(); // Reload data to update UI
+    await ref.read(appSettingsProvider.notifier).updateDailyGoal(newGoal);
+    // No need to reload data since we're now watching the provider
   }
 
   Future<void> _saveReminder(String mode, int snoozeDuration) async {
@@ -168,7 +167,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       );
     }
     
-    await _loadData(); // Reload data to update UI
+    // No need to reload data since we're now watching the provider
   }
 
   int _getDurationInMinutes(int snoozeDuration) {
@@ -198,11 +197,11 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   String _getReminderDisplayValue() {
-    if (_userSettings == null || !_userSettings!.reminderEnabled) {
+    if (ref.read(appSettingsProvider) == null || !ref.read(appSettingsProvider).reminderEnabled) {
       return 'Off';
     }
     
-    final intervalMinutes = _getDurationInMinutes(_userSettings!.snoozeDuration);
+    final intervalMinutes = ref.read(appSettingsProvider).snoozeDuration;
     final nextReminderTime = _getNextReminderTime(intervalMinutes);
     final now = DateTime.now();
     final difference = nextReminderTime.difference(now);
@@ -228,6 +227,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     final drinkBreakdown = ref.read(waterIntakeNotifierProvider.notifier).getDrinkTypeBreakdownForDate(selectedDate);
     final rewardsState = ref.watch(rewardsNotifierProvider);
     final goalReachedToday = (rewardsState['goalReachedToday'] as bool?) ?? false;
+    final userSettings = ref.watch(appSettingsProvider);
+    final goalIntake = userSettings.dailyGoal;
     
     // Update current intake and progress when data changes
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -235,7 +236,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       if (totalIntake != _currentIntake) {
         setState(() {
           _currentIntake = totalIntake.toDouble();
-          _progress = _goalIntake > 0 ? (_currentIntake / _goalIntake).clamp(0.0, 1.0) : 0.0;
+          _progress = goalIntake > 0 ? (_currentIntake / goalIntake).clamp(0.0, 1.0) : 0.0;
         });
       }
     });
@@ -371,7 +372,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           // Set Goal Popup
           if (_showSetGoalPopup)
             SetGoalPopup(
-              currentGoal: _goalIntake,
+              currentGoal: ref.watch(appSettingsProvider).dailyGoal,
               onClose: () {
                 setState(() {
                   _showSetGoalPopup = false;
@@ -547,7 +548,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                              if (picked != null && picked != ref.read(selectedDateNotifierProvider)) {
                  ref.read(selectedDateNotifierProvider.notifier).setDate(picked);
                  ref.read(waterIntakeNotifierProvider.notifier).loadIntakesForDate(picked);
-                 await _loadData(); // Reload data for the new date
+                 // No need to reload data since we're now watching the provider
                }
             },
             child: Row(
@@ -583,6 +584,8 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget _buildProgressCircle() {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
+    final userSettings = ref.watch(appSettingsProvider);
+    final goalIntake = userSettings.dailyGoal;
     
     // Responsive sizing based on screen size
     double containerSize;
@@ -614,76 +617,80 @@ class _HomePageState extends ConsumerState<HomePage> {
       subFontSize = 20;
     }
     
-    return Container(
-      width: containerSize,
-      height: containerSize,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Progress Circle with exact colors from Figma
-          SizedBox(
-            width: circleSize,
-            height: circleSize,
-            child: CircularProgressIndicator(
-              value: _progress,
-              strokeWidth: circleSize * 0.14,
-              backgroundColor: const Color(0xFFD9D9D9), // D9D9D9 for circle background
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                Color(0xFF00B4D8), // 00B4D8 for filled circle
+    return Center(
+      child: Container(
+        width: containerSize,
+        height: containerSize,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Progress Circle with exact colors from Figma
+            SizedBox(
+              width: circleSize,
+              height: circleSize,
+              child: CircularProgressIndicator(
+                value: _progress,
+                strokeWidth: circleSize * 0.14,
+                backgroundColor: const Color(0xFFD9D9D9), // D9D9D9 for circle background
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  Color(0xFF00B4D8), // 00B4D8 for filled circle
+                ),
               ),
             ),
-          ),
 
-          // Center Content
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Water Drop Icon with Ripple Effect
-              Container(
-                width: iconSize,
-                height: iconSize,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF00B4D8), // 00B4D8 for water drop
-                  borderRadius: BorderRadius.circular(iconSize / 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF00B4D8).withOpacity(0.3),
-                      spreadRadius: 2,
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+            // Center Content
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Water Drop Icon with Ripple Effect
+                Container(
+                  width: iconSize,
+                  height: iconSize,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00B4D8), // 00B4D8 for water drop
+                    borderRadius: BorderRadius.circular(iconSize / 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF00B4D8).withOpacity(0.3),
+                        spreadRadius: 2,
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.water_drop,
+                    color: Colors.white,
+                    size: iconSize * 0.5,
+                  ),
                 ),
-                child: Icon(
-                  Icons.water_drop,
-                  color: Colors.white,
-                  size: iconSize * 0.5,
-                ),
-              ),
-              SizedBox(height: iconSize * 0.25),
+                SizedBox(height: iconSize * 0.25),
 
-              // Intake Text
-              Text(
-                '${_currentIntake.toInt()}ml',
-                style: TextStyle(
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                // Intake Text
+                Text(
+                  '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(_currentIntake).toStringAsFixed(1)}${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
                 ),
-              ),
-              Text(
-                '/${_goalIntake.toInt()}ml',
-                style: TextStyle(fontSize: subFontSize, color: Colors.grey[600]),
-              ),
-            ],
-          ),
-        ],
+                Text(
+                  '/${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(goalIntake).toStringAsFixed(1)}${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
+                  style: TextStyle(fontSize: subFontSize, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildInfoCards() {
     final screenWidth = MediaQuery.of(context).size.width;
+    final userSettings = ref.watch(appSettingsProvider);
+    final goalIntake = userSettings.dailyGoal;
     
     // Responsive layout based on screen size
     if (screenWidth < 600) {
@@ -712,7 +719,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             },
             child: _buildInfoCard(
               title: 'Goal',
-              value: '${_goalIntake.toInt()}',
+              value: '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(goalIntake).toStringAsFixed(1)}${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
               icon: Icons.track_changes,
               iconColor: const Color(0xFFFFFFFF), // FFFFFF for goal
             ),
@@ -748,10 +755,10 @@ class _HomePageState extends ConsumerState<HomePage> {
               },
               child: _buildInfoCard(
                 title: 'Goal',
-                value: '${_goalIntake.toInt()}',
+                value: '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(goalIntake).toStringAsFixed(1)}${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
                 icon: Icons.track_changes,
                 iconColor: const Color(0xFFFFFFFF), // FFFFFF for goal
-              ),
+            ),
             ),
           ),
         ],
@@ -932,7 +939,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           return _buildDrinkCard(
             icon: _getDrinkIcon(entry.key),
             name: entry.key,
-            amount: '${entry.value}ml',
+            amount: '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(entry.value.toDouble()).toStringAsFixed(1)}${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
           );
         },
       ),
@@ -940,37 +947,127 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Widget _buildEmptyState() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    // Use the same responsive grid configuration as drink cards
+    int crossAxisCount;
+    double childAspectRatio;
+    double spacing;
+    
+    if (screenWidth < 600) {
+      // Mobile
+      crossAxisCount = 2;
+      childAspectRatio = 1.4;
+      spacing = 10;
+    } else if (screenWidth < 1200) {
+      // Tablet
+      crossAxisCount = 3;
+      childAspectRatio = 1.3;
+      spacing = 15;
+    } else {
+      // Desktop
+      crossAxisCount = 4;
+      childAspectRatio = 1.2;
+      spacing = 20;
+    }
+    
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.4,
+      ),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          crossAxisSpacing: spacing,
+          mainAxisSpacing: spacing,
+          childAspectRatio: childAspectRatio,
+        ),
+        itemCount: 1, // Single empty card
+        itemBuilder: (context, index) {
+          return _buildEmptyCard();
+        },
+      ),
+    );
+  }
+
+  Widget _buildEmptyCard() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    // Use the same responsive sizing as drink cards
+    double padding;
+    double iconSize;
+    double nameFontSize;
+    double amountFontSize;
+    double spacing;
+    
+    if (screenWidth < 600) {
+      // Mobile
+      padding = 12;
+      iconSize = 32;
+      nameFontSize = 14;
+      amountFontSize = 12;
+      spacing = 8;
+    } else if (screenWidth < 1200) {
+      // Tablet
+      padding = 15;
+      iconSize = 36;
+      nameFontSize = 16;
+      amountFontSize = 14;
+      spacing = 10;
+    } else {
+      // Desktop
+      padding = 18;
+      iconSize = 40;
+      nameFontSize = 18;
+      amountFontSize = 16;
+      spacing = 12;
+    }
+    
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.symmetric(vertical: padding, horizontal: padding * 0.75),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
+        color: const Color(0xFFF1F5F9), // Light gray background for empty state
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade300),
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             Icons.water_drop,
-            size: 32,
+            size: iconSize,
             color: Colors.grey.shade400,
           ),
-          const SizedBox(height: 8),
-          Text(
-            'No drinks today',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey.shade600,
+          SizedBox(height: spacing),
+          Flexible(
+            child: Text(
+              'No drinks today',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: nameFontSize,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade600,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Tap the + button to add your first drink',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade500,
+          SizedBox(height: spacing * 0.5),
+          Flexible(
+            child: Text(
+              'Tap + to add',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: amountFontSize,
+                color: Colors.grey.shade500,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -1101,6 +1198,8 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   Widget _buildNavigationDrawer() {
     final screenWidth = MediaQuery.of(context).size.width;
+    final userSettings = ref.watch(appSettingsProvider);
+    final goalIntake = userSettings.dailyGoal;
     
     // Responsive drawer width
     double drawerWidth;
@@ -1208,7 +1307,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    '${_goalIntake.toInt()}ml',
+                                    '${goalIntake.toInt()}ml',
                                     style: const TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,

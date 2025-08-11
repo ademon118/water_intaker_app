@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../services/app_settings_provider.dart';
 
-class DashboardPage extends StatefulWidget {
+class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
 
   @override
-  State<DashboardPage> createState() => _DashboardPageState();
+  ConsumerState<DashboardPage> createState() => _DashboardPageState();
 }
 
-class _DashboardPageState extends State<DashboardPage> {
+class _DashboardPageState extends ConsumerState<DashboardPage> {
   int _selectedPeriodIndex = 0; // 0 = Week, 1 = Month, 2 = Year
   final List<String> _periods = ['Week', 'Month', 'Year'];
   
@@ -18,7 +20,7 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -98,7 +100,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
-                      color: isSelected ? const Color(0xFF4A90E2) : Colors.transparent,
+                      color: isSelected ? const Color(0xFF00B4D8) : Colors.transparent,
                       width: 2,
                     ),
                   ),
@@ -108,8 +110,8 @@ class _DashboardPageState extends State<DashboardPage> {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                    color: isSelected ? const Color(0xFF4A90E2) : Colors.grey[600],
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected ? const Color(0xFF00B4D8) : Colors.grey[600],
                   ),
                 ),
               ),
@@ -121,242 +123,12 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildBarChart() {
+    final unitLabel = ref.read(appSettingsProvider.notifier).getUnitAbbreviation();
+    
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Weekly Intake',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            height: 200,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: _weekDays.asMap().entries.map((entry) {
-                int index = entry.key;
-                String day = entry.value;
-                double value = _weeklyData[index];
-                bool isHighlighted = index == 3; // Thursday is highlighted
-                
-                return Expanded(
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          decoration: BoxDecoration(
-                            color: isHighlighted 
-                                ? const Color(0xFF4A90E2) 
-                                : Colors.grey[300],
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: FractionallySizedBox(
-                            heightFactor: value / 120, // Normalize to max value
-                            child: Container(),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        day,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '0',
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-              ),
-              Text(
-                '120',
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAverageIntakeCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Average Intake',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const Text(
-                  'Per Day',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  '2800 /ml',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            width: 80,
-            height: 80,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  width: 80,
-                  height: 80,
-                  child: CircularProgressIndicator(
-                    value: 0.85, // 85% progress
-                    strokeWidth: 8,
-                    backgroundColor: Colors.grey[300],
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      Color(0xFF4A90E2),
-                    ),
-                  ),
-                ),
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF4A90E2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Icon(
-                    Icons.water_drop,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDataCards() {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _buildDataCard(
-                title: 'Current Streak',
-                value: '5 Glass',
-                icon: Icons.local_fire_department,
-                iconColor: Colors.orange,
-              ),
-            ),
-            const SizedBox(width: 15),
-            Expanded(
-              child: _buildDataCard(
-                title: 'Longest Streak',
-                value: '10 Glass',
-                icon: Icons.emoji_events,
-                iconColor: Colors.amber,
-                showTrophy: true,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 15),
-        Row(
-          children: [
-            Expanded(
-              child: _buildDataCard(
-                title: 'Average Volume',
-                value: '5 Glass',
-                icon: Icons.water_drop,
-                iconColor: const Color(0xFF4A90E2),
-              ),
-            ),
-            const SizedBox(width: 15),
-            Expanded(
-              child: _buildDataCard(
-                title: 'Drink Frequency',
-                value: '5 Glass',
-                icon: Icons.show_chart,
-                iconColor: const Color(0xFF4A90E2),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDataCard({
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color iconColor,
-    bool showTrophy = false,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
@@ -371,39 +143,194 @@ class _DashboardPageState extends State<DashboardPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
+            'Weekly Progress',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            height: 200,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: _weeklyData.asMap().entries.map((entry) {
+                int index = entry.key;
+                double value = entry.value;
+                double maxValue = _weeklyData.reduce((a, b) => a > b ? a : b);
+                double height = (value / maxValue) * 150;
+                
+                return Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Container(
+                      width: 30,
+                      height: height,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00B4D8),
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _weekDays[index],
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    Text(
+                      '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(value).toStringAsFixed(1)}$unitLabel',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAverageIntakeCard() {
+    final unitLabel = ref.read(appSettingsProvider.notifier).getUnitAbbreviation();
+    final averageIntake = _weeklyData.reduce((a, b) => a + b) / _weeklyData.length;
+    final displayAverage = ref.read(appSettingsProvider.notifier).convertToDisplayUnit(averageIntake);
+    
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: const BoxDecoration(
+              color: Color(0xFF00B4D8),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.trending_up,
+              color: Colors.white,
+              size: 30,
+            ),
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Average Daily Intake',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  '${displayAverage.toStringAsFixed(1)}$unitLabel',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDataCards() {
+    final unitLabel = ref.read(appSettingsProvider.notifier).getUnitAbbreviation();
+    
+    return Row(
+      children: [
+        Expanded(
+          child: _buildDataCard(
+            title: 'Best Day',
+            value: '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(_weeklyData.reduce((a, b) => a > b ? a : b)).toStringAsFixed(1)}$unitLabel',
+            icon: Icons.emoji_events,
+            color: const Color(0xFFFFD700),
+          ),
+        ),
+        const SizedBox(width: 15),
+        Expanded(
+          child: _buildDataCard(
+            title: 'Total Week',
+            value: '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(_weeklyData.reduce((a, b) => a + b)).toStringAsFixed(1)}$unitLabel',
+            icon: Icons.calendar_today,
+            color: const Color(0xFF00B4D8),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDataCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(
+            icon,
+            size: 30,
+            color: color,
+          ),
+          const SizedBox(height: 10),
+          Text(
             title,
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey[600],
             ),
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              if (showTrophy) ...[
-                const SizedBox(width: 8),
-                Icon(
-                  Icons.emoji_events,
-                  color: Colors.amber,
-                  size: 20,
-                ),
-              ] else ...[
-                const SizedBox(width: 8),
-                Icon(
-                  icon,
-                  color: iconColor,
-                  size: 20,
-                ),
-              ],
-            ],
+          const SizedBox(height: 5),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
           ),
         ],
       ),

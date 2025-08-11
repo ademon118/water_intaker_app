@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../services/user_settings_service.dart';
+import '../../../services/app_settings_provider.dart';
 import '../../../models/user_settings.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
@@ -11,73 +12,12 @@ class SettingsPage extends ConsumerStatefulWidget {
 }
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
-  UserSettings? _userSettings;
-  bool _isDarkMode = false;
-  String _selectedUnit = 'ml';
-  double _dailyGoal = 2800;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSettings();
-  }
-
-  Future<void> _loadSettings() async {
-    try {
-      final settings = await UserSettingsService.loadSettings();
-      setState(() {
-        _userSettings = settings;
-        _dailyGoal = settings.dailyGoal;
-        _selectedUnit = settings.unit;
-        _isDarkMode = settings.isDarkMode;
-      });
-    } catch (e) {
-      print('Error loading settings: $e');
-      setState(() {
-        _dailyGoal = 2800.0;
-        _selectedUnit = 'ml';
-        _isDarkMode = false;
-      });
-    }
-  }
-
-  Future<void> _updateDailyGoal(double newGoal) async {
-    try {
-      await UserSettingsService.updateDailyGoal(newGoal);
-      setState(() {
-        _dailyGoal = newGoal;
-      });
-    } catch (e) {
-      print('Error updating daily goal: $e');
-    }
-  }
-
-  Future<void> _updateUnit(String newUnit) async {
-    try {
-      await UserSettingsService.updateUnit(newUnit);
-      setState(() {
-        _selectedUnit = newUnit;
-      });
-    } catch (e) {
-      print('Error updating unit: $e');
-    }
-  }
-
-  Future<void> _updateAppearance(bool isDarkMode) async {
-    try {
-      await UserSettingsService.updateAppearance(isDarkMode);
-      setState(() {
-        _isDarkMode = isDarkMode;
-      });
-    } catch (e) {
-      print('Error updating appearance: $e');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final userSettings = ref.watch(appSettingsProvider);
+    
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -91,11 +31,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     const SizedBox(height: 15),
                     _buildSliderSetting(
                       title: 'Daily water intake goal',
-                      value: '${_dailyGoal.toInt()} $_selectedUnit',
-                      onChanged: _updateDailyGoal,
-                      min: 1000,
-                      max: 5000,
+                      value: '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(userSettings.dailyGoal).toStringAsFixed(1)} ${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
+                      onChanged: (newGoal) {
+                        // Convert from display unit to ml for storage
+                        final goalInMl = ref.read(appSettingsProvider.notifier).convertFromDisplayUnit(newGoal);
+                        ref.read(appSettingsProvider.notifier).updateDailyGoal(goalInMl);
+                      },
+                      min: ref.read(appSettingsProvider.notifier).convertToDisplayUnit(1000.0),
+                      max: ref.read(appSettingsProvider.notifier).convertToDisplayUnit(5000.0),
                       divisions: 40,
+                      currentValue: ref.read(appSettingsProvider.notifier).convertToDisplayUnit(userSettings.dailyGoal),
                     ),
                     const SizedBox(height: 20),
                     _buildNavigationSetting(
@@ -105,13 +50,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     const SizedBox(height: 15),
                     _buildNavigationSetting(
                       title: 'Units',
-                      value: _selectedUnit == 'ml' ? 'ml' : 'oz',
+                      value: userSettings.unit == 'ml' ? 'ml' : 'oz',
                       onTap: () => _showUnitSelectionDialog(),
                     ),
                     const SizedBox(height: 15),
                     _buildNavigationSetting(
                       title: 'Appearance',
-                      value: _isDarkMode ? 'Dark' : 'Light',
+                      value: userSettings.isDarkMode ? 'Dark' : 'Light',
                       onTap: () => _showAppearanceSelectionDialog(),
                     ),
                     const SizedBox(height: 15),
@@ -174,11 +119,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     required double min,
     required double max,
     required int divisions,
+    required double currentValue,
   }) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
@@ -197,18 +143,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
-                  color: Colors.black87,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ],
@@ -224,7 +170,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
             ),
             child: Slider(
-              value: _dailyGoal,
+              value: currentValue,
               min: min,
               max: max,
               divisions: divisions,
@@ -243,7 +189,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
@@ -266,10 +212,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 Expanded(
                   child: Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: Colors.black87,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -297,6 +243,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   void _showUnitSelectionDialog() {
+    final currentUnit = ref.read(appSettingsProvider).unit;
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -304,29 +252,31 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildUnitOption('Ounces, oz', 'oz'),
+            _buildUnitOption('Ounces, oz', 'oz', currentUnit == 'oz'),
             const SizedBox(height: 10),
-            _buildUnitOption('Milliliters, ml', 'ml'),
+            _buildUnitOption('Milliliters, ml', 'ml', currentUnit == 'ml'),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildUnitOption(String label, String unit) {
+  Widget _buildUnitOption(String label, String unit, bool isSelected) {
     return ListTile(
       title: Text(label),
-      trailing: _selectedUnit == unit
+      trailing: isSelected
           ? const Icon(Icons.check, color: Color(0xFF00B4D8))
           : null,
       onTap: () {
-        _updateUnit(unit);
+        ref.read(appSettingsProvider.notifier).updateUnit(unit);
         Navigator.pop(context);
       },
     );
   }
 
   void _showAppearanceSelectionDialog() {
+    final isDarkMode = ref.read(appSettingsProvider).isDarkMode;
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -334,23 +284,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildAppearanceOption('Light Mode', false),
+            _buildAppearanceOption('Light Mode', false, !isDarkMode),
             const SizedBox(height: 10),
-            _buildAppearanceOption('Dark Mode', true),
+            _buildAppearanceOption('Dark Mode', true, isDarkMode),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildAppearanceOption(String label, bool isDark) {
+  Widget _buildAppearanceOption(String label, bool isDark, bool isSelected) {
     return ListTile(
       title: Text(label),
-      trailing: _isDarkMode == isDark
+      trailing: isSelected
           ? const Icon(Icons.check, color: Color(0xFF00B4D8))
           : null,
       onTap: () {
-        _updateAppearance(isDark);
+        ref.read(appSettingsProvider.notifier).updateTheme(isDark);
         Navigator.pop(context);
       },
     );

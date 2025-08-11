@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'features/home/widgets/home_page.dart';
 import 'services/water_intake_service.dart';
 import 'services/reminder_service.dart';
+import 'services/app_settings_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,21 +12,19 @@ void main() async {
   runApp(const ProviderScope(child: WaterIntakeApp()));
 }
 
-class WaterIntakeApp extends StatelessWidget {
+class WaterIntakeApp extends ConsumerWidget {
   const WaterIntakeApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeData = ref.watch(themeProvider);
+    final themeMode = ref.watch(appSettingsProvider.notifier).getThemeMode();
+    
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Water Intake Tracker',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF4A90E2),
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-      ),
+      theme: themeData,
+      themeMode: themeMode,
       home: const HomePage(),
     );
   }

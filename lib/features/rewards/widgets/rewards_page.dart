@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../services/water_intake_provider.dart';
 import '../../../services/rewards_service.dart';
 import '../../../services/user_settings_service.dart';
+import '../../../services/app_settings_provider.dart';
 import '../../../models/user_settings.dart';
 
 class RewardsPage extends ConsumerStatefulWidget {
@@ -32,14 +33,15 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
   Widget build(BuildContext context) {
     final selectedDate = ref.watch(selectedDateNotifierProvider);
     final totalIntake = ref.read(waterIntakeNotifierProvider.notifier).getTotalIntakeForDate(selectedDate);
-    final goalIntake = _userSettings?.dailyGoal ?? 2800;
+    final userSettings = ref.watch(appSettingsProvider);
+    final goalIntake = userSettings.dailyGoal;
     final progress = goalIntake > 0 ? (totalIntake / goalIntake).clamp(0.0, 1.0) : 0.0;
     final rewardsState = ref.watch(rewardsNotifierProvider);
     final badges = (rewardsState['badges'] as List).map((e) => Map<String, dynamic>.from(e)).toList();
     final achievements = (rewardsState['achievements'] as List).map((e) => Map<String, dynamic>.from(e)).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -94,10 +96,14 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
   }
 
   Widget _buildProgressSection(int totalIntake, double goalIntake, double progress) {
+    final displayTotal = ref.read(appSettingsProvider.notifier).convertToDisplayUnit(totalIntake.toDouble());
+    final displayGoal = ref.read(appSettingsProvider.notifier).convertToDisplayUnit(goalIntake);
+    final unitLabel = ref.read(appSettingsProvider.notifier).getUnitAbbreviation();
+    
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
@@ -122,7 +128,7 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
                 ),
               ),
               Text(
-                '${totalIntake.toInt()}ml / ${goalIntake.toInt()}ml',
+                '${displayTotal.toStringAsFixed(1)}$unitLabel / ${displayGoal.toStringAsFixed(1)}$unitLabel',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
