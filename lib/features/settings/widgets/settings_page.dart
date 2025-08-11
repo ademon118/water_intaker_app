@@ -31,7 +31,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     const SizedBox(height: 15),
                     _buildSliderSetting(
                       title: 'Daily water intake goal',
-                      value: '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(userSettings.dailyGoal).toStringAsFixed(1)} ${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
+                      value: '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(userSettings.dailyGoal).toInt()} ${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
                       onChanged: (newGoal) {
                         // Convert from display unit to ml for storage
                         final goalInMl = ref.read(appSettingsProvider.notifier).convertFromDisplayUnit(newGoal);
@@ -80,14 +80,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       child: Row(
         children: [
           const SizedBox(width: 48),
-          const Expanded(
+          Expanded(
             child: Text(
               'Settings',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),
@@ -105,7 +105,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w600,
-          color: Colors.grey[600],
+          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
           letterSpacing: 0.5,
         ),
       ),
@@ -128,7 +128,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Theme.of(context).shadowColor.withOpacity(0.1),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -162,11 +162,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const SizedBox(height: 15),
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
-              activeTrackColor: const Color(0xFF00B4D8),
-              inactiveTrackColor: Colors.grey[300],
-              thumbColor: Colors.white,
+              activeTrackColor: Theme.of(context).colorScheme.primary,
+              inactiveTrackColor: Theme.of(context).colorScheme.surface,
+              thumbColor: Theme.of(context).colorScheme.onPrimary,
               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-              overlayColor: const Color(0xFF00B4D8).withOpacity(0.2),
+              overlayColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
               overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
             ),
             child: Slider(
@@ -193,7 +193,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Theme.of(context).shadowColor.withOpacity(0.1),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -224,7 +224,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     value,
                     style: TextStyle(
                       fontSize: 16,
-                      color: Colors.grey[600],
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -232,7 +232,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 Icon(
                   Icons.arrow_forward_ios,
                   size: 16,
-                  color: Colors.grey[400],
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
                 ),
               ],
             ),
@@ -265,7 +265,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return ListTile(
       title: Text(label),
       trailing: isSelected
-          ? const Icon(Icons.check, color: Color(0xFF00B4D8))
+          ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
           : null,
       onTap: () {
         ref.read(appSettingsProvider.notifier).updateUnit(unit);
@@ -297,7 +297,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return ListTile(
       title: Text(label),
       trailing: isSelected
-          ? const Icon(Icons.check, color: Color(0xFF00B4D8))
+          ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
           : null,
       onTap: () {
         ref.read(appSettingsProvider.notifier).updateTheme(isDark);
@@ -341,7 +341,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Widget _buildDrinkCategory(String name, String description, IconData icon) {
     return Row(
       children: [
-        Icon(icon, color: const Color(0xFF00B4D8), size: 20),
+        Icon(icon, color: Theme.of(context).colorScheme.primary, size: 20),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -349,7 +349,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             children: [
               Text(
                 name,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
                 ),
@@ -358,7 +358,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 description,
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey[600],
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
                 ),
               ),
             ],

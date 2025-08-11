@@ -78,14 +78,14 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
       child: Row(
         children: [
           const SizedBox(width: 48),
-          const Expanded(
+          Expanded(
             child: Text(
               'Rewards',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),
@@ -107,7 +107,7 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Theme.of(context).shadowColor.withOpacity(0.1),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -119,20 +119,20 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Today\'s Progress',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               Text(
-                '${displayTotal.toStringAsFixed(1)}$unitLabel / ${displayGoal.toStringAsFixed(1)}$unitLabel',
+                '${displayTotal.toInt()}$unitLabel / ${displayGoal.toInt()}$unitLabel',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: Colors.grey[600],
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                 ),
               ),
             ],
@@ -140,8 +140,8 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
           const SizedBox(height: 20),
           LinearProgressIndicator(
             value: progress,
-            backgroundColor: Colors.grey[300],
-            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF00B4D8)),
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
             minHeight: 8,
           ),
           const SizedBox(height: 15),
@@ -149,13 +149,13 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFF00B4D8),
+                color: Theme.of(context).colorScheme.primary,
                 borderRadius: BorderRadius.circular(15),
               ),
-              child: const Text(
+              child: Text(
                 'Goal Achieved! 🎉',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onPrimary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -172,12 +172,12 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Badges',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 15),
@@ -222,11 +222,11 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
     
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Theme.of(context).shadowColor.withOpacity(0.1),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -240,12 +240,12 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              color: isUnlocked ? const Color(0xFF00B4D8) : Colors.grey[300],
+              color: isUnlocked ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surface,
               shape: BoxShape.circle,
             ),
             child: Icon(
               getIconData(badge['icon']),
-              color: isUnlocked ? Colors.white : Colors.grey[600],
+              color: isUnlocked ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
               size: 30,
             ),
           ),
@@ -256,7 +256,7 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: isUnlocked ? Colors.black87 : Colors.grey[500],
+              color: isUnlocked ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
             ),
           ),
           const SizedBox(height: 4),
@@ -265,7 +265,7 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 10,
-              color: Colors.grey[600],
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
             ),
           ),
         ],
@@ -280,12 +280,12 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Achievements',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 15),
@@ -326,11 +326,11 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Theme.of(context).shadowColor.withOpacity(0.1),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -343,12 +343,12 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
             width: 50,
             height: 50,
             decoration: BoxDecoration(
-              color: isCompleted ? const Color(0xFF00B4D8) : Colors.grey[300],
+              color: isCompleted ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(25),
             ),
             child: Icon(
               getIconData(achievement['icon']),
-              color: isCompleted ? Colors.white : Colors.grey[600],
+              color: isCompleted ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
               size: 24,
             ),
           ),
@@ -362,7 +362,7 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: isCompleted ? Colors.black87 : Colors.grey[600],
+                    color: isCompleted ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -370,16 +370,16 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
                   achievement['description'],
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.grey[600],
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                   ),
                 ),
               ],
             ),
           ),
           if (isCompleted)
-            const Icon(
+            Icon(
               Icons.check_circle,
-              color: Color(0xFF00B4D8),
+              color: Theme.of(context).colorScheme.primary,
               size: 24,
             ),
         ],

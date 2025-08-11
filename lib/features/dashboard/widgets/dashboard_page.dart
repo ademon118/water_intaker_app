@@ -62,14 +62,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       child: Row(
         children: [
           const SizedBox(width: 48), // Balance the layout
-          const Expanded(
+          Expanded(
             child: Text(
               'Dashboard',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),
@@ -100,7 +100,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
-                      color: isSelected ? const Color(0xFF00B4D8) : Colors.transparent,
+                      color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
                       width: 2,
                     ),
                   ),
@@ -111,7 +111,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: isSelected ? const Color(0xFF00B4D8) : Colors.grey[600],
+                    color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                   ),
                 ),
               ),
@@ -132,7 +132,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Theme.of(context).shadowColor.withOpacity(0.1),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -169,7 +169,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       width: 30,
                       height: height,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF00B4D8),
+                        color: Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(15),
                       ),
                     ),
@@ -178,14 +178,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       _weekDays[index],
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey[600],
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                       ),
                     ),
                     Text(
-                      '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(value).toStringAsFixed(1)}$unitLabel',
+                      '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(value).toInt()}$unitLabel',
                       style: TextStyle(
                         fontSize: 10,
-                        color: Colors.grey[500],
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                       ),
                     ),
                   ],
@@ -210,7 +210,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Theme.of(context).shadowColor.withOpacity(0.1),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -222,13 +222,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           Container(
             width: 60,
             height: 60,
-            decoration: const BoxDecoration(
-              color: Color(0xFF00B4D8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.trending_up,
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.onPrimary,
               size: 30,
             ),
           ),
@@ -247,7 +247,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  '${displayAverage.toStringAsFixed(1)}$unitLabel',
+                  '${displayAverage.toInt()}$unitLabel',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -270,18 +270,18 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         Expanded(
           child: _buildDataCard(
             title: 'Best Day',
-            value: '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(_weeklyData.reduce((a, b) => a > b ? a : b)).toStringAsFixed(1)}$unitLabel',
+            value: '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(_weeklyData.reduce((a, b) => a > b ? a : b)).toInt()}$unitLabel',
             icon: Icons.emoji_events,
-            color: const Color(0xFFFFD700),
+            color: Theme.of(context).colorScheme.secondary,
           ),
         ),
         const SizedBox(width: 15),
         Expanded(
           child: _buildDataCard(
             title: 'Total Week',
-            value: '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(_weeklyData.reduce((a, b) => a + b)).toStringAsFixed(1)}$unitLabel',
+            value: '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(_weeklyData.reduce((a, b) => a + b)).toInt()}$unitLabel',
             icon: Icons.calendar_today,
-            color: const Color(0xFF00B4D8),
+            color: Theme.of(context).colorScheme.primary,
           ),
         ),
       ],
@@ -301,7 +301,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Theme.of(context).shadowColor.withOpacity(0.1),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -320,7 +320,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             title,
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey[600],
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
             ),
           ),
           const SizedBox(height: 5),

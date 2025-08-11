@@ -105,7 +105,7 @@ class _AddWaterPopupState extends ConsumerState<AddWaterPopup>
       animation: _animationController,
       builder: (context, child) {
         return Container(
-          color: Colors.black.withOpacity(0.5 * _fadeAnimation.value),
+          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
           child: Column(
             children: [
               // Transparent area to close popup
@@ -125,11 +125,11 @@ class _AddWaterPopupState extends ConsumerState<AddWaterPopup>
                   margin: const EdgeInsets.symmetric(horizontal: 20),
                   padding: const EdgeInsets.all(25),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Theme.of(context).shadowColor.withOpacity(0.1),
                         spreadRadius: 5,
                         blurRadius: 15,
                         offset: const Offset(0, 5),
@@ -142,9 +142,9 @@ class _AddWaterPopupState extends ConsumerState<AddWaterPopup>
                       // Header
                       Row(
                         children: [
-                          const Icon(
+                           Icon(
                             Icons.add_circle,
-                            color: Color(0xFF00B4D8),
+                            color: Theme.of(context).colorScheme.primary,
                             size: 28,
                           ),
                           const SizedBox(width: 15),
@@ -161,7 +161,7 @@ class _AddWaterPopupState extends ConsumerState<AddWaterPopup>
                           IconButton(
                             onPressed: _closePopup,
                             icon: const Icon(Icons.close),
-                            color: Colors.grey[600],
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                           ),
                         ],
                       ),
@@ -203,13 +203,13 @@ class _AddWaterPopupState extends ConsumerState<AddWaterPopup>
                             child: Container(
                               decoration: BoxDecoration(
                                 color: isSelected 
-                                    ? const Color(0xFF00B4D8).withOpacity(0.1)
-                                    : Colors.grey[100],
+                                    ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                                    : Theme.of(context).colorScheme.surface,
                                 borderRadius: BorderRadius.circular(15),
                                 border: Border.all(
                                   color: isSelected 
-                                      ? const Color(0xFF00B4D8)
-                                      : Colors.grey[300]!,
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Theme.of(context).colorScheme.outline.withOpacity(0.3),
                                   width: isSelected ? 2 : 1,
                                 ),
                               ),
@@ -220,8 +220,8 @@ class _AddWaterPopupState extends ConsumerState<AddWaterPopup>
                                     _getIconData(drink['icon']),
                                     size: 32,
                                     color: isSelected 
-                                        ? const Color(0xFF00B4D8)
-                                        : Colors.grey[600],
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
@@ -230,8 +230,8 @@ class _AddWaterPopupState extends ConsumerState<AddWaterPopup>
                                       fontSize: 12,
                                       fontWeight: FontWeight.w500,
                                       color: isSelected 
-                                          ? const Color(0xFF00B4D8)
-                                          : Colors.grey[600],
+                                          ? Theme.of(context).colorScheme.primary
+                                          : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                                     ),
                                     textAlign: TextAlign.center,
                                     maxLines: 2,
@@ -260,11 +260,11 @@ class _AddWaterPopupState extends ConsumerState<AddWaterPopup>
                       // Amount slider
                       SliderTheme(
                         data: SliderTheme.of(context).copyWith(
-                          activeTrackColor: const Color(0xFF00B4D8),
-                          inactiveTrackColor: Colors.grey[300],
-                          thumbColor: Colors.white,
+                          activeTrackColor: Theme.of(context).colorScheme.primary,
+                          inactiveTrackColor: Theme.of(context).colorScheme.surface,
+                          thumbColor: Theme.of(context).colorScheme.onPrimary,
                           thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-                          overlayColor: const Color(0xFF00B4D8).withOpacity(0.2),
+                          overlayColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
                           overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
                         ),
                         child: Slider(
@@ -282,11 +282,11 @@ class _AddWaterPopupState extends ConsumerState<AddWaterPopup>
                       
                       // Amount display
                       Text(
-                        '${displayAmount.toStringAsFixed(1)}$unitLabel',
+                        '${displayAmount.toInt()}$unitLabel',
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFF00B4D8),
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                       
@@ -299,15 +299,15 @@ class _AddWaterPopupState extends ConsumerState<AddWaterPopup>
                         child: ElevatedButton(
                           onPressed: _selectedDrinkIndex >= 0 ? _addWater : null,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF00B4D8),
-                            foregroundColor: Colors.white,
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            foregroundColor: Theme.of(context).colorScheme.onPrimary,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                             elevation: 0,
                           ),
                           child: Text(
-                            'Add ${displayAmount.toStringAsFixed(1)}$unitLabel',
+                            'Add ${displayAmount.toInt()}$unitLabel',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,

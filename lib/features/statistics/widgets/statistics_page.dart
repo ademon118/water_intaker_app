@@ -74,7 +74,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -108,14 +108,14 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
       child: Row(
         children: [
           const SizedBox(width: 48),
-          const Expanded(
+          Expanded(
             child: Text(
               'Statistics',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),
@@ -147,7 +147,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
-                      color: isSelected ? const Color(0xFF00B4D8) : Colors.transparent,
+                      color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
                       width: 2,
                     ),
                   ),
@@ -158,7 +158,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                    color: isSelected ? const Color(0xFF00B4D8) : Colors.grey[600],
+                    color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                   ),
                 ),
               ),
@@ -179,7 +179,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
                 title: 'Total Intake',
                 value: '${_totalIntake.toInt()}ml',
                 icon: Icons.water_drop,
-                color: const Color(0xFF00B4D8),
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(width: 15),
@@ -188,7 +188,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
                 title: 'Total Drinks',
                 value: '$_totalDrinks',
                 icon: Icons.local_bar,
-                color: const Color(0xFF4A90E2),
+                color: Theme.of(context).colorScheme.secondary,
               ),
             ),
           ],
@@ -201,7 +201,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
                 title: 'Average',
                 value: '${_averageIntake.toInt()}ml',
                 icon: Icons.analytics,
-                color: const Color(0xFF00B4D8),
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(width: 15),
@@ -210,7 +210,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
                 title: 'Current Streak',
                 value: '$_currentStreak days',
                 icon: Icons.local_fire_department,
-                color: Colors.orange,
+                color: Theme.of(context).colorScheme.tertiary,
               ),
             ),
           ],
@@ -228,11 +228,11 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Theme.of(context).shadowColor.withOpacity(0.1),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -247,16 +247,16 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
             title,
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey[600],
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
             ),
           ),
           const SizedBox(height: 5),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
         ],
@@ -272,11 +272,11 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Theme.of(context).shadowColor.withOpacity(0.1),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -286,12 +286,12 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Drink Type Breakdown',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 20),
@@ -315,16 +315,17 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
             children: [
               Text(
                 drinkType,
-                style: const TextStyle(
-                  fontSize: 14,
+                style: TextStyle(
+                  fontSize: 16,
                   fontWeight: FontWeight.w500,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               Text(
-                '${amount.toInt()}ml (${percentage.toStringAsFixed(1)}%)',
+                '${amount.toInt()}ml (${percentage.toStringAsFixed(0)}%)',
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey[600],
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
                 ),
               ),
             ],
@@ -332,8 +333,8 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
           const SizedBox(height: 8),
           LinearProgressIndicator(
             value: percentage / 100,
-            backgroundColor: Colors.grey[300],
-            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF00B4D8)),
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
           ),
         ],
       ),
@@ -344,11 +345,11 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Theme.of(context).shadowColor.withOpacity(0.1),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -358,12 +359,12 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Intake Trend',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 20),
@@ -411,7 +412,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 2),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF00B4D8),
+                    color: Theme.of(context).colorScheme.primary,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: FractionallySizedBox(
@@ -425,7 +426,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
                 labels[index],
                 style: TextStyle(
                   fontSize: 10,
-                  color: Colors.grey[600],
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                 ),
               ),
             ],
@@ -439,11 +440,11 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Theme.of(context).shadowColor.withOpacity(0.1),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -453,12 +454,12 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Detailed Statistics',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 20),
@@ -475,14 +476,14 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
   Widget _buildStatRow(String label, String value, IconData icon) {
     return Row(
       children: [
-        Icon(icon, color: const Color(0xFF00B4D8), size: 20),
+        Icon(icon, color: Theme.of(context).colorScheme.primary, size: 20),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
-              color: Colors.black87,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
         ),
@@ -491,7 +492,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: Colors.grey[600],
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
           ),
         ),
       ],
@@ -502,11 +503,11 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
     return Container(
       padding: const EdgeInsets.all(40),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Theme.of(context).shadowColor.withOpacity(0.1),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -518,14 +519,14 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
           Icon(
             Icons.analytics,
             size: 48,
-            color: Colors.grey[400],
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
           ),
           const SizedBox(height: 16),
           Text(
             message,
             style: TextStyle(
               fontSize: 16,
-              color: Colors.grey[600],
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
             ),
             textAlign: TextAlign.center,
           ),

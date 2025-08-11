@@ -14,6 +14,7 @@ class WaterIntakeNotifier extends _$WaterIntakeNotifier {
 
   Future<void> addWaterIntake(WaterIntake intake) async {
     await WaterIntakeService.addWaterIntake(intake);
+    // Update state for the specific date of the intake
     state = WaterIntakeService.getIntakesForDate(intake.date);
   }
 

@@ -12,7 +12,9 @@ class WaterIntakeService {
   }
 
   static Future<void> addWaterIntake(WaterIntake intake) async {
+    print('WaterIntakeService: Adding intake: ${intake.amount}ml ${intake.drinkType} for ${intake.date.toString().split(' ')[0]}');
     await _box?.add(intake);
+    print('WaterIntakeService: Intake added successfully');
   }
 
   static List<WaterIntake> getIntakesForDate(DateTime date) {
@@ -21,14 +23,23 @@ class WaterIntakeService {
     final startOfDay = DateTime(date.year, date.month, date.day);
     final endOfDay = startOfDay.add(const Duration(days: 1));
     
-    return _box!.values.where((intake) {
+    final intakes = _box!.values.where((intake) {
       return intake.date.isAfter(startOfDay) && intake.date.isBefore(endOfDay);
     }).toList();
+    
+    print('WaterIntakeService: Found ${intakes.length} intakes for ${date.toString().split(' ')[0]}');
+    for (var intake in intakes) {
+      print('  - ${intake.amount}ml ${intake.drinkType} at ${intake.timestamp}');
+    }
+    
+    return intakes;
   }
 
   static int getTotalIntakeForDate(DateTime date) {
     final intakes = getIntakesForDate(date);
-    return intakes.fold(0, (sum, intake) => sum + intake.amount);
+    final total = intakes.fold(0, (sum, intake) => sum + intake.amount);
+    print('WaterIntakeService: Total intake for ${date.toString().split(' ')[0]}: ${total}ml');
+    return total;
   }
 
   static List<WaterIntake> getIntakesForDateRange(DateTime startDate, DateTime endDate) {

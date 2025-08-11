@@ -29,6 +29,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   int _currentIndex = 0;
   double _currentIntake = 0;
   double _progress = 0.0;
+  double _lastGoalIntake = 0;
   bool _showAddWaterPopup = false;
   bool _showReminderPopup = false;
   bool _showSetGoalPopup = false;
@@ -48,21 +49,60 @@ class _HomePageState extends ConsumerState<HomePage> {
     super.dispose();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Update progress when dependencies change
+    _updateProgressFromDependencies();
+  }
+
+  void _updateProgressFromDependencies() {
+    final selectedDate = ref.read(selectedDateNotifierProvider);
+    final totalIntake = ref.read(waterIntakeNotifierProvider.notifier).getTotalIntakeForDate(selectedDate);
+    final userSettings = ref.read(appSettingsProvider);
+    final goalIntake = userSettings.dailyGoal;
+    
+    if (totalIntake != _currentIntake || goalIntake != _lastGoalIntake) {
+      final newProgress = goalIntake > 0 ? calculatProgress(totalIntake.toDouble(), goalIntake) : 0.0;
+      print('Progress Update: Current: $_currentIntake, Goal: $goalIntake, Progress: $_progress -> $newProgress');
+      
+      setState(() {
+        _currentIntake = totalIntake.toDouble();
+        _lastGoalIntake = goalIntake;
+        _progress = newProgress;
+      });
+    }
+  }
+
+  double calculatProgress(double current, double goal) {
+    if (goal <= 0) return 0.0;
+    final progress = current / goal;
+    print('Calcul Charts: $current / $goal = $progress');
+    return progress.clamp(0.0, 1.0);
+  }
+
   Future<void> _loadData() async {
     try {
       final selectedDate = ref.read(selectedDateNotifierProvider);
       final totalIntake = ref.read(waterIntakeNotifierProvider.notifier).getTotalIntakeForDate(selectedDate);
+      final userSettings = ref.read(appSettingsProvider);
+      final goalIntake = userSettings.dailyGoal;
+      
+      final newProgress = goalIntake > 0 ? calculatProgress(totalIntake.toDouble(), goalIntake) : 0.0;
+      print('LoadData: Current: $totalIntake, Goal: $goalIntake, Progress: $newProgress');
       
       setState(() {
         _currentIntake = totalIntake.toDouble();
-        // Progress will be calculated in build method using watched goal value
+        _lastGoalIntake = goalIntake;
+        _progress = newProgress;
       });
     } catch (e) {
       print('Error loading data: $e');
       // Set default values if there's an error
       setState(() {
         _currentIntake = 0.0;
-        // Progress will be calculated in build method using watched goal value
+        _lastGoalIntake = 0.0;
+        _progress = 0.0;
       });
     }
   }
@@ -103,8 +143,8 @@ class _HomePageState extends ConsumerState<HomePage> {
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Added ${displayAmount.toStringAsFixed(1)}$unitLabel of $drinkType'),
-            backgroundColor: const Color(0xFF00B4D8),
+            content: Text('Added ${displayAmount.toInt()}$unitLabel of $drinkType'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
             duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.fixed,
             shape: RoundedRectangleBorder(
@@ -119,7 +159,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Error adding drink. Please try again.'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
             duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.fixed,
             shape: RoundedRectangleBorder(
@@ -131,9 +171,22 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
+  void _updateProgress() {
+    final userSettings = ref.read(appSettingsProvider);
+    final goalIntake = userSettings.dailyGoal;
+    final newProgress = goalIntake > 0 ? calculatProgress(_currentIntake, goalIntake) : 0.0;
+    print('UpdateProgress: Current: $_currentIntake, Goal: $goalIntake, Progress: $_progress -> $newProgress');
+    
+    setState(() {
+      _lastGoalIntake = goalIntake;
+      _progress = newProgress;
+    });
+  }
+
   Future<void> _saveGoal(double newGoal) async {
     await ref.read(appSettingsProvider.notifier).updateDailyGoal(newGoal);
-    // No need to reload data since we're now watching the provider
+    // Update progress when goal changes
+    _updateProgress();
   }
 
   Future<void> _saveReminder(String mode, int snoozeDuration) async {
@@ -157,7 +210,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Reminders set! Next reminder in ${intervalMinutes} minutes'),
-          backgroundColor: const Color(0xFF00B4D8),
+          backgroundColor: Theme.of(context).colorScheme.primary,
           duration: const Duration(seconds: 3),
           behavior: SnackBarBehavior.fixed,
           shape: RoundedRectangleBorder(
@@ -230,16 +283,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     final userSettings = ref.watch(appSettingsProvider);
     final goalIntake = userSettings.dailyGoal;
     
-    // Update current intake and progress when data changes
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final totalIntake = ref.read(waterIntakeNotifierProvider.notifier).getTotalIntakeForDate(selectedDate);
-      if (totalIntake != _currentIntake) {
-        setState(() {
-          _currentIntake = totalIntake.toDouble();
-          _progress = goalIntake > 0 ? (_currentIntake / goalIntake).clamp(0.0, 1.0) : 0.0;
-        });
-      }
-    });
+
+    
+
 
                 // Show congratulations popup for any newly unlocked badge or completed achievement
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -317,7 +363,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   Widget _buildHomeContent() {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
           // Main content with dimming effect
@@ -434,8 +480,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                   _showAddWaterPopup = true;
                 });
               },
-              backgroundColor: const Color(0xFF00B4D8),
-              child: Icon(Icons.add, color: Colors.white, size: iconSize),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              child: Icon(Icons.add, color: Theme.of(context).colorScheme.onPrimary, size: iconSize),
             ),
           );
         },
@@ -487,7 +533,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 _showNavigationDrawer = true;
               });
             },
-            child: Icon(Icons.menu, color: Colors.grey[600], size: iconSize),
+            child: Icon(Icons.menu, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6), size: iconSize),
           ),
           
           SizedBox(width: spacing),
@@ -498,10 +544,10 @@ class _HomePageState extends ConsumerState<HomePage> {
               await ReminderService.showTestNotification();
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Test notification sent!'),
-                    backgroundColor: Color(0xFF00B4D8),
-                    duration: Duration(seconds: 2),
+                  SnackBar(
+                    content: const Text('Test notification sent!'),
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    duration: const Duration(seconds: 2),
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
@@ -510,12 +556,12 @@ class _HomePageState extends ConsumerState<HomePage> {
             child: Container(
               padding: EdgeInsets.all(iconSize * 0.33),
               decoration: BoxDecoration(
-                color: const Color(0xFF00B4D8),
+                color: Theme.of(context).colorScheme.primary,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
                 Icons.notifications,
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.onPrimary,
                 size: iconSize * 0.83,
               ),
             ),
@@ -534,11 +580,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                 builder: (context, child) {
                   return Theme(
                     data: Theme.of(context).copyWith(
-                      colorScheme: const ColorScheme.light(
-                        primary: Color(0xFF00B4D8), // 00B4D8 for primary color
-                        onPrimary: Colors.white,
-                        surface: Colors.white,
-                        onSurface: Colors.black87,
+                      colorScheme: ColorScheme.light(
+                        primary: Theme.of(context).colorScheme.primary,
+                        onPrimary: Theme.of(context).colorScheme.onPrimary,
+                        surface: Theme.of(context).colorScheme.surface,
+                        onSurface: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     child: child!,
@@ -548,7 +594,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                              if (picked != null && picked != ref.read(selectedDateNotifierProvider)) {
                  ref.read(selectedDateNotifierProvider.notifier).setDate(picked);
                  ref.read(waterIntakeNotifierProvider.notifier).loadIntakesForDate(picked);
-                 // No need to reload data since we're now watching the provider
+                 // Reload data and update progress for the new date
+                 await _loadData();
                }
             },
             child: Row(
@@ -557,7 +604,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 Text(
                   _getDateText(),
                   style: TextStyle(
-                    color: Colors.black,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: fontSize,
                     fontWeight: FontWeight.w500,
                   ),
@@ -565,7 +612,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 SizedBox(width: spacing * 0.53),
                 Icon(
                   Icons.keyboard_arrow_down,
-                  color: Colors.grey[600],
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                   size: iconSize * 0.83,
                 ),
               ],
@@ -575,7 +622,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           const Spacer(),
 
           // Grid icon
-          Icon(Icons.grid_view, color: Colors.grey[600], size: iconSize),
+          Icon(Icons.grid_view, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6), size: iconSize),
         ],
       ),
     );
@@ -631,9 +678,25 @@ class _HomePageState extends ConsumerState<HomePage> {
               child: CircularProgressIndicator(
                 value: _progress,
                 strokeWidth: circleSize * 0.14,
-                backgroundColor: const Color(0xFFD9D9D9), // D9D9D9 for circle background
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                  Color(0xFF00B4D8), // 00B4D8 for filled circle
+                backgroundColor: Theme.of(context).colorScheme.surface,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ),
+            // Debug info (remove in production)
+            Positioned(
+              top: 10,
+              right: 10,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  'P: ${_progress.toStringAsFixed(3)}',
+                  style: const TextStyle(color: Colors.white, fontSize: 10),
                 ),
               ),
             ),
@@ -647,11 +710,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                   width: iconSize,
                   height: iconSize,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF00B4D8), // 00B4D8 for water drop
+                    color: Theme.of(context).colorScheme.primary, // 00B4D8 for water drop
                     borderRadius: BorderRadius.circular(iconSize / 2),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF00B4D8).withOpacity(0.3),
+                        color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
                         spreadRadius: 2,
                         blurRadius: 8,
                         offset: const Offset(0, 2),
@@ -660,7 +723,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ),
                   child: Icon(
                     Icons.water_drop,
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onPrimary,
                     size: iconSize * 0.5,
                   ),
                 ),
@@ -668,17 +731,22 @@ class _HomePageState extends ConsumerState<HomePage> {
 
                 // Intake Text
                 Text(
-                  '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(_currentIntake).toStringAsFixed(1)}${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
+                  '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(_currentIntake).toInt()}${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
                   style: TextStyle(
                     fontSize: fontSize,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 Text(
-                  '/${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(goalIntake).toStringAsFixed(1)}${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
-                  style: TextStyle(fontSize: subFontSize, color: Colors.grey[600]),
+                  '/${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(goalIntake).toInt()}${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
+                  style: TextStyle(fontSize: subFontSize, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                 ),
+                // Debug info (remove in production)
+                // Text(
+                //   'Raw: ${_currentIntake.toInt()}/${goalIntake.toInt()}',
+                //   style: TextStyle(fontSize: 10, color: Colors.red),
+                // ),
               ],
             ),
           ],
@@ -707,7 +775,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               title: 'Reminder',
               value: _getReminderDisplayValue(),
               icon: Icons.notifications,
-              iconColor: const Color(0xFFFFFFFF), // FFFFFF for remainder
+              iconColor: Theme.of(context).colorScheme.primary,
             ),
           ),
           const SizedBox(height: 15),
@@ -719,9 +787,9 @@ class _HomePageState extends ConsumerState<HomePage> {
             },
             child: _buildInfoCard(
               title: 'Goal',
-              value: '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(goalIntake).toStringAsFixed(1)}${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
+              value: '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(goalIntake).toInt()}${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
               icon: Icons.track_changes,
-              iconColor: const Color(0xFFFFFFFF), // FFFFFF for goal
+              iconColor: Theme.of(context).colorScheme.primary,
             ),
           ),
         ],
@@ -741,7 +809,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               title: 'Reminder',
               value: _getReminderDisplayValue(),
               icon: Icons.notifications,
-              iconColor: const Color(0xFFFFFFFF), // FFFFFF for remainder
+              iconColor: Theme.of(context).colorScheme.primary,
             ),
             ),
           ),
@@ -755,9 +823,9 @@ class _HomePageState extends ConsumerState<HomePage> {
               },
               child: _buildInfoCard(
                 title: 'Goal',
-                value: '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(goalIntake).toStringAsFixed(1)}${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
+                value: '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(goalIntake).toInt()}${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
                 icon: Icons.track_changes,
-                iconColor: const Color(0xFFFFFFFF), // FFFFFF for goal
+                iconColor: Theme.of(context).colorScheme.primary,
             ),
             ),
           ),
@@ -807,11 +875,11 @@ class _HomePageState extends ConsumerState<HomePage> {
     return Container(
       padding: EdgeInsets.all(padding),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFFFF), // FFFFFF for card background
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Theme.of(context).shadowColor.withOpacity(0.1),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -826,7 +894,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               children: [
                 Text(
                   title,
-                  style: TextStyle(fontSize: titleFontSize, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: titleFontSize, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                 ),
                 SizedBox(height: padding * 0.25),
                 Text(
@@ -834,7 +902,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   style: TextStyle(
                     fontSize: valueFontSize,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -849,7 +917,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
             child: Icon(
               icon,
-              color: const Color(0xFF000000), // 000000 for icon color
+              color: Theme.of(context).colorScheme.onPrimary,
               size: iconSize,
             ),
           ),
@@ -864,23 +932,23 @@ class _HomePageState extends ConsumerState<HomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Today Drinks',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 15),
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFFFFF), // FFFFFF for container background
+            color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(15),
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withOpacity(0.1),
+                color: Theme.of(context).shadowColor.withOpacity(0.1),
                 spreadRadius: 1,
                 blurRadius: 3,
                 offset: const Offset(0, 1),
@@ -939,7 +1007,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           return _buildDrinkCard(
             icon: _getDrinkIcon(entry.key),
             name: entry.key,
-            amount: '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(entry.value.toDouble()).toStringAsFixed(1)}${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
+            amount: '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(entry.value.toDouble()).toInt()}${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
           );
         },
       ),
@@ -1028,9 +1096,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     return Container(
       padding: EdgeInsets.symmetric(vertical: padding, horizontal: padding * 0.75),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9), // Light gray background for empty state
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.3)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1039,7 +1107,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           Icon(
             Icons.water_drop,
             size: iconSize,
-            color: Colors.grey.shade400,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
           ),
           SizedBox(height: spacing),
           Flexible(
@@ -1049,7 +1117,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               style: TextStyle(
                 fontSize: nameFontSize,
                 fontWeight: FontWeight.w600,
-                color: Colors.grey.shade600,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -1062,7 +1130,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: amountFontSize,
-                color: Colors.grey.shade500,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                 fontWeight: FontWeight.w500,
               ),
               maxLines: 1,
@@ -1133,14 +1201,14 @@ class _HomePageState extends ConsumerState<HomePage> {
     return Container(
       padding: EdgeInsets.symmetric(vertical: padding, horizontal: padding * 0.75),
       decoration: BoxDecoration(
-        color: const Color(0xFFA2D2FF), // A2D2FF for today drinks background
+        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: const Color(0xFF000000), size: iconSize), // 000000 for icon color
+          Icon(icon, color: Theme.of(context).colorScheme.onSurface, size: iconSize),
           SizedBox(height: spacing),
           Flexible(
             child: Text(
@@ -1149,7 +1217,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               style: TextStyle(
                 fontSize: nameFontSize,
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFF000000), // 000000 for text color
+                color: Theme.of(context).colorScheme.onSurface,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -1162,9 +1230,9 @@ class _HomePageState extends ConsumerState<HomePage> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: amountFontSize, 
-                color: const Color(0xFF000000),
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.w500,
-              ), // 000000 for amount text
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -1218,17 +1286,17 @@ class _HomePageState extends ConsumerState<HomePage> {
       duration: const Duration(milliseconds: 300),
       width: drawerWidth,
       child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.only(
             topRight: Radius.circular(20),
             bottomRight: Radius.circular(20),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black26,
+              color: Theme.of(context).shadowColor.withOpacity(0.3),
               blurRadius: 10,
-              offset: Offset(2, 0),
+              offset: const Offset(2, 0),
             ),
           ],
         ),
@@ -1237,9 +1305,9 @@ class _HomePageState extends ConsumerState<HomePage> {
             // Header Section with Blue Background
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
-                color: Color(0xFF00B4D8), // Blue background
-                borderRadius: BorderRadius.only(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+                borderRadius: const BorderRadius.only(
                   topRight: Radius.circular(20),
                 ),
               ),
@@ -1254,9 +1322,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                             _showNavigationDrawer = false;
                           });
                         },
-                        child: const Icon(
+                        child: Icon(
                           Icons.arrow_back,
-                          color: Colors.black,
+                          color: Theme.of(context).colorScheme.onPrimary,
                           size: 24,
                         ),
                       ),
@@ -1266,12 +1334,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                         width: 50,
                         height: 50,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onPrimary,
                           borderRadius: BorderRadius.circular(25),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.person,
-                          color: Colors.black,
+                          color: Theme.of(context).colorScheme.primary,
                           size: 30,
                         ),
                       ),
@@ -1281,37 +1349,37 @@ class _HomePageState extends ConsumerState<HomePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Daily Goal',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black,
+                                color: Theme.of(context).colorScheme.onPrimary,
                               ),
                             ),
                             const SizedBox(height: 8),
                             // Goal Chip
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.all(Radius.circular(15)),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.onPrimary,
+                                borderRadius: const BorderRadius.all(Radius.circular(15)),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(
+                                  Icon(
                                     Icons.flag,
-                                    color: Colors.red,
+                                    color: Theme.of(context).colorScheme.error,
                                     size: 16,
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
                                     '${goalIntake.toInt()}ml',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
-                                      color: Colors.black,
+                                      color: Theme.of(context).colorScheme.primary,
                                     ),
                                   ),
                                 ],
@@ -1360,17 +1428,17 @@ class _HomePageState extends ConsumerState<HomePage> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFFE3F2FD) : Colors.transparent, // Light blue for selected
+              color: isSelected ? Theme.of(context).colorScheme.primary.withOpacity(0.1) : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
               border: isSelected 
-                  ? Border.all(color: const Color(0xFF00B4D8), width: 1)
+                  ? Border.all(color: Theme.of(context).colorScheme.primary, width: 1)
                   : null,
             ),
             child: Row(
               children: [
                 Icon(
                   icon,
-                  color: Colors.black,
+                  color: Theme.of(context).colorScheme.onSurface,
                   size: 24,
                 ),
                 const SizedBox(width: 16),
@@ -1379,7 +1447,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    color: Colors.black,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -1392,6 +1460,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   Widget _buildBottomNavigation() {
     final screenWidth = MediaQuery.of(context).size.width;
+    final theme = Theme.of(context);
     
     // Responsive sizing
     double iconSize;
@@ -1413,10 +1482,10 @@ class _HomePageState extends ConsumerState<HomePage> {
     
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.bottomNavigationBarTheme.backgroundColor ?? theme.cardColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: theme.shadowColor.withOpacity(0.1),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, -1),
@@ -1436,11 +1505,19 @@ class _HomePageState extends ConsumerState<HomePage> {
           );
         },
         type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: const Color(0xFF4A90E2),
-        unselectedItemColor: Colors.grey[600],
-        selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: fontSize),
-        unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w400, fontSize: fontSize),
+        backgroundColor: theme.bottomNavigationBarTheme.backgroundColor ?? theme.cardColor,
+        selectedItemColor: theme.bottomNavigationBarTheme.selectedItemColor ?? theme.colorScheme.primary,
+        unselectedItemColor: theme.bottomNavigationBarTheme.unselectedItemColor ?? theme.colorScheme.onSurface.withOpacity(0.6),
+        selectedLabelStyle: TextStyle(
+          fontWeight: FontWeight.w600, 
+          fontSize: fontSize,
+          color: theme.bottomNavigationBarTheme.selectedItemColor ?? theme.colorScheme.primary,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontWeight: FontWeight.w400, 
+          fontSize: fontSize,
+          color: theme.bottomNavigationBarTheme.unselectedItemColor ?? theme.colorScheme.onSurface.withOpacity(0.6),
+        ),
         items: [
           BottomNavigationBarItem(
             icon: Icon(Icons.home, size: iconSize), 

@@ -129,6 +129,27 @@ ThemeData _buildTheme(bool isDarkMode) {
         backgroundColor: Color(0xFF1E1E1E),
         foregroundColor: Colors.white,
       ),
+      // Add more comprehensive dark theme colors
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: Color(0xFF1E1E1E),
+        selectedItemColor: Color(0xFF00B4D8),
+        unselectedItemColor: Colors.grey,
+        selectedLabelStyle: TextStyle(color: Colors.white),
+        unselectedLabelStyle: TextStyle(color: Colors.grey),
+      ),
+      // Define text colors for dark mode
+      textTheme: const TextTheme(
+        bodyLarge: TextStyle(color: Colors.white),
+        bodyMedium: TextStyle(color: Colors.white),
+        bodySmall: TextStyle(color: Colors.white70),
+        titleLarge: TextStyle(color: Colors.white),
+        titleMedium: TextStyle(color: Colors.white),
+        titleSmall: TextStyle(color: Colors.white),
+      ),
+      // Define icon colors for dark mode
+      iconTheme: const IconThemeData(
+        color: Colors.white,
+      ),
     );
   } else {
     return ThemeData(
@@ -143,6 +164,27 @@ ThemeData _buildTheme(bool isDarkMode) {
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
+      ),
+      // Add more comprehensive light theme colors
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: Colors.white,
+        selectedItemColor: Color(0xFF4A90E2),
+        unselectedItemColor: Colors.grey,
+        selectedLabelStyle: TextStyle(color: Colors.black87),
+        unselectedLabelStyle: TextStyle(color: Colors.grey),
+      ),
+      // Define text colors for light mode
+      textTheme: const TextTheme(
+        bodyLarge: TextStyle(color: Colors.black87),
+        bodyMedium: TextStyle(color: Colors.black87),
+        bodySmall: TextStyle(color: Colors.black54),
+        titleLarge: TextStyle(color: Colors.black87),
+        titleMedium: TextStyle(color: Colors.black87),
+        titleSmall: TextStyle(color: Colors.black87),
+      ),
+      // Define icon colors for light mode
+      iconTheme: const IconThemeData(
+        color: Colors.black87,
       ),
     );
   }

@@ -32,7 +32,7 @@ class _SetGoalPopupState extends ConsumerState<SetGoalPopup>
     super.initState();
     // Convert current goal to display unit for the text field
     final displayGoal = ref.read(appSettingsProvider.notifier).convertToDisplayUnit(widget.currentGoal);
-    _goalController = TextEditingController(text: displayGoal.toStringAsFixed(1));
+    _goalController = TextEditingController(text: displayGoal.toInt().toString());
     _checkGoalValidity();
     
     _animationController = AnimationController(
@@ -104,7 +104,7 @@ class _SetGoalPopupState extends ConsumerState<SetGoalPopup>
       animation: _animationController,
       builder: (context, child) {
         return Container(
-          color: Colors.black.withOpacity(0.5 * _fadeAnimation.value),
+          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6 * _fadeAnimation.value),
           child: Column(
             children: [
               // Transparent area to close popup
@@ -124,11 +124,11 @@ class _SetGoalPopupState extends ConsumerState<SetGoalPopup>
                   margin: const EdgeInsets.symmetric(horizontal: 20),
                   padding: const EdgeInsets.all(25),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                         spreadRadius: 5,
                         blurRadius: 15,
                         offset: const Offset(0, 5),
@@ -141,9 +141,9 @@ class _SetGoalPopupState extends ConsumerState<SetGoalPopup>
                       // Header
                       Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.track_changes,
-                            color: Color(0xFF00B4D8),
+                            color: Theme.of(context).colorScheme.primary,
                             size: 28,
                           ),
                           const SizedBox(width: 15),
@@ -160,7 +160,7 @@ class _SetGoalPopupState extends ConsumerState<SetGoalPopup>
                           IconButton(
                             onPressed: _closePopup,
                             icon: const Icon(Icons.close),
-                            color: Colors.grey[600],
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                           ),
                         ],
                       ),
@@ -170,10 +170,10 @@ class _SetGoalPopupState extends ConsumerState<SetGoalPopup>
                       // Goal input field
                       Container(
                         decoration: BoxDecoration(
-                          color: Colors.grey[100],
+                          color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: _isGoalValid ? Colors.green : Colors.grey[300]!,
+                            color: _isGoalValid ? Theme.of(context).colorScheme.tertiary : Theme.of(context).colorScheme.surface,
                             width: 2,
                           ),
                         ),
@@ -205,7 +205,7 @@ class _SetGoalPopupState extends ConsumerState<SetGoalPopup>
                         'Set a realistic daily water intake goal to stay hydrated and track your progress.',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[600],
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                           height: 1.4,
                         ),
                         textAlign: TextAlign.center,
@@ -220,8 +220,8 @@ class _SetGoalPopupState extends ConsumerState<SetGoalPopup>
                         child: ElevatedButton(
                           onPressed: _isGoalValid ? _saveGoal : null,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF00B4D8),
-                            foregroundColor: Colors.white,
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            foregroundColor: Theme.of(context).colorScheme.onPrimary,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),

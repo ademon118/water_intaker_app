@@ -66,7 +66,7 @@ class _CongratulationsPopupState extends ConsumerState<CongratulationsPopup>
       animation: _animationController,
       builder: (context, child) {
         return Container(
-          color: Colors.black.withOpacity(0.5 * _fadeAnimation.value),
+          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5 * _fadeAnimation.value),
           child: Center(
             child: Transform.scale(
               scale: _scaleAnimation.value,
@@ -74,11 +74,11 @@ class _CongratulationsPopupState extends ConsumerState<CongratulationsPopup>
                 margin: const EdgeInsets.all(40),
                 padding: const EdgeInsets.all(30),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
                       spreadRadius: 5,
                       blurRadius: 15,
                       offset: const Offset(0, 5),
@@ -94,12 +94,12 @@ class _CongratulationsPopupState extends ConsumerState<CongratulationsPopup>
                     
                     // Congratulations Text
                     Container(
-                      child: const SelectableText(
+                      child: SelectableText(
                         'Congrats',
                         style: TextStyle(
-                          fontSize: 28,
+                          fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                          color: Theme.of(context).colorScheme.onSurface,
                           decoration: TextDecoration.none,
                         ),
                         enableInteractiveSelection: false,
@@ -111,9 +111,9 @@ class _CongratulationsPopupState extends ConsumerState<CongratulationsPopup>
                     Container(
                       child: SelectableText(
                         'You earned ${widget.badgeName}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
-                          color: Colors.grey,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                           fontWeight: FontWeight.w500,
                           decoration: TextDecoration.none,
                         ),
@@ -133,8 +133,8 @@ class _CongratulationsPopupState extends ConsumerState<CongratulationsPopup>
                           Navigator.of(context).pop();
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF00B4D8),
-                          foregroundColor: Colors.white,
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -157,11 +157,11 @@ class _CongratulationsPopupState extends ConsumerState<CongratulationsPopup>
                         widget.onViewBadge();
                         Navigator.of(context).pop();
                       },
-                      child: const Text(
+                      child: Text(
                         'View the badge',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Color(0xFF00B4D8),
+                          color: Theme.of(context).colorScheme.primary,
                           fontWeight: FontWeight.w600,
                           decoration: TextDecoration.none,
                         ),
@@ -186,18 +186,18 @@ class _CongratulationsPopupState extends ConsumerState<CongratulationsPopup>
           width: 80,
           height: 80,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Color(0xFF00B4D8),
-                Color(0xFF0096CC),
+                Theme.of(context).colorScheme.primary,
+                Theme.of(context).colorScheme.primary.withOpacity(0.8),
               ],
             ),
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF00B4D8).withOpacity(0.3),
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
                 spreadRadius: 2,
                 blurRadius: 8,
                 offset: const Offset(0, 2),
@@ -207,9 +207,9 @@ class _CongratulationsPopupState extends ConsumerState<CongratulationsPopup>
         ),
         
         // Main star
-        const Icon(
+        Icon(
           Icons.star,
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.primary,
           size: 40,
         ),
         
@@ -226,8 +226,8 @@ class _CongratulationsPopupState extends ConsumerState<CongratulationsPopup>
             child: Container(
               width: 6,
               height: 6,
-              decoration: const BoxDecoration(
-                color: Color(0xFF00B4D8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
                 shape: BoxShape.circle,
               ),
             ),

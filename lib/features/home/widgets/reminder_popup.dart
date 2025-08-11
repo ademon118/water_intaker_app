@@ -91,7 +91,7 @@ class _ReminderPopupState extends State<ReminderPopup>
       animation: _animationController,
       builder: (context, child) {
         return Container(
-          color: Colors.black.withValues(alpha: 0.5 * _fadeAnimation.value),
+          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4 * _fadeAnimation.value),
           child: Column(
             children: [
               // Transparent area to close popup
@@ -124,18 +124,18 @@ class _ReminderPopupState extends State<ReminderPopup>
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: Colors.grey[400],
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
                       
                       // Title
-                      const Text(
+                      Text(
                         'Reminder',
                         style: TextStyle(
-                          fontSize: 24,
+                          fontSize: 22,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                       
@@ -161,12 +161,12 @@ class _ReminderPopupState extends State<ReminderPopup>
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Column(
                           children: [
-                            const Text(
+                            Text(
                               'Snooze for',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.black87,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
                             const SizedBox(height: 15),
@@ -209,14 +209,14 @@ class _ReminderPopupState extends State<ReminderPopup>
                               _closePopup();
                             } : null,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF00B4D8), // 00B4D8 button color
-                              foregroundColor: Colors.white,
+                              backgroundColor: Theme.of(context).colorScheme.primary,
+                              foregroundColor: Theme.of(context).colorScheme.onPrimary,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               elevation: 0,
                             ),
-                            child: const Text(
+                            child: Text(
                               'Add',
                               style: TextStyle(
                                 fontSize: 16,
@@ -235,9 +235,9 @@ class _ReminderPopupState extends State<ReminderPopup>
                           await ReminderService.showTestNotification();
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
+                              SnackBar(
                                 content: Text('Test notification sent!'),
-                                backgroundColor: Color(0xFF00B4D8),
+                                backgroundColor: Theme.of(context).colorScheme.primary,
                                 duration: Duration(seconds: 2),
                                 behavior: SnackBarBehavior.fixed,
                               ),
@@ -247,15 +247,15 @@ class _ReminderPopupState extends State<ReminderPopup>
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                           decoration: BoxDecoration(
-                            border: Border.all(color: const Color(0xFF00B4D8)),
+                            border: Border.all(color: Theme.of(context).colorScheme.primary),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Text(
+                          child: Text(
                             'Test Notification',
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
-                              color: Color(0xFF00B4D8), // 00B4D8 blue color
+                              color: Theme.of(context).colorScheme.primary,
                             ),
                           ),
                         ),
@@ -271,7 +271,7 @@ class _ReminderPopupState extends State<ReminderPopup>
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text('Pending reminders: $pendingInfo'),
-                                backgroundColor: const Color(0xFF00B4D8),
+                                backgroundColor: Theme.of(context).colorScheme.primary,
                                 duration: const Duration(seconds: 3),
                                 behavior: SnackBarBehavior.fixed,
                               ),
@@ -281,15 +281,15 @@ class _ReminderPopupState extends State<ReminderPopup>
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                           decoration: BoxDecoration(
-                            border: Border.all(color: const Color(0xFF00B4D8)),
+                            border: Border.all(color: Theme.of(context).colorScheme.primary),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Text(
+                          child: Text(
                             'Show Pending Reminders',
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
-                              color: Color(0xFF00B4D8), // 00B4D8 blue color
+                              color: Theme.of(context).colorScheme.primary,
                             ),
                           ),
                         ),
@@ -302,12 +302,12 @@ class _ReminderPopupState extends State<ReminderPopup>
                         onTap: () {
                           // Advanced settings logic here
                         },
-                        child: const Text(
+                        child: Text(
                           'Advanced Settings',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
-                            color: Color(0xFF00B4D8), // 00B4D8 blue color
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
                       ),
@@ -338,11 +338,11 @@ class _ReminderPopupState extends State<ReminderPopup>
         height: 80,
         decoration: BoxDecoration(
           color: isSelected 
-              ? Colors.white // White background for selected
-              : const Color(0xFFD9D9D9), // D9D9D9 unselected color
+              ? Theme.of(context).colorScheme.surface // White background for selected
+              : Theme.of(context).colorScheme.surfaceVariant, // D9D9D9 unselected color
           borderRadius: BorderRadius.circular(12),
           border: isSelected 
-              ? Border.all(color: const Color(0xFF00B4D8), width: 2) // 00B4D8 border for selected
+              ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2) // 00B4D8 border for selected
               : null,
         ),
         child: Column(
@@ -350,16 +350,16 @@ class _ReminderPopupState extends State<ReminderPopup>
           children: [
             Icon(
               icon,
-              color: const Color(0xFF00B4D8), // 00B4D8 blue color for all icons
+              color: Theme.of(context).colorScheme.primary, // 00B4D8 blue color for all icons
               size: 24,
             ),
             const SizedBox(height: 8),
             Text(
               name,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                color: Colors.black87,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ],
@@ -381,19 +381,19 @@ class _ReminderPopupState extends State<ReminderPopup>
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected 
-              ? Colors.white // White background for selected
-              : const Color(0xFFD9D9D9), // D9D9D9 unselected color
+              ? Theme.of(context).colorScheme.surface // White background for selected
+              : Theme.of(context).colorScheme.surfaceVariant, // D9D9D9 unselected color
           borderRadius: BorderRadius.circular(20),
           border: isSelected 
-              ? Border.all(color: const Color(0xFF00B4D8), width: 2) // 00B4D8 border for selected
+              ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2) // 00B4D8 border for selected
               : null,
         ),
         child: Text(
           duration,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: Colors.black87,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
       ),
