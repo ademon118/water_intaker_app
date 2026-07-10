@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../services/user_settings_service.dart';
+import '../../../app_tokens.dart';
+import '../../../core/app_assets.dart';
 import '../../../services/app_settings_provider.dart';
-import '../../../models/user_settings.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -55,12 +55,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                     const SizedBox(height: 15),
                     _buildNavigationSetting(
-                      title: 'Appearance',
-                      value: userSettings.isDarkMode ? 'Dark' : 'Light',
-                      onTap: () => _showAppearanceSelectionDialog(),
-                    ),
-                    const SizedBox(height: 15),
-                    _buildNavigationSetting(
                       title: 'Drinks info',
                       onTap: () => _showDrinksInfoDialog(),
                     ),
@@ -84,11 +78,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             child: Text(
               'Settings',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
+              style: AppTextStyles.inter24Bold.copyWith(color: Theme.of(context).colorScheme.onSurface),
             ),
           ),
           const SizedBox(width: 48),
@@ -102,12 +92,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       width: double.infinity,
       child: Text(
         title,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-          letterSpacing: 0.5,
-        ),
+        style: AppTextStyles.inter14SemiBold.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6), letterSpacing: 0.5),
       ),
     );
   }
@@ -143,19 +128,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             children: [
               Text(
                 title,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
+                style: AppTextStyles.inter16Medium.copyWith(color: Theme.of(context).colorScheme.onSurface),
               ),
               Text(
                 value,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
+                style: AppTextStyles.inter16SemiBold.copyWith(color: Theme.of(context).colorScheme.onSurface),
               ),
             ],
           ),
@@ -212,19 +189,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 Expanded(
                   child: Text(
                     title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
+                    style: AppTextStyles.inter16Medium.copyWith(color: Theme.of(context).colorScheme.onSurface),
                   ),
                 ),
                 if (value != null) ...[
                   Text(
                     value,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+                    style: AppTextStyles.inter16Regular.copyWith(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.4),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -274,97 +249,105 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  void _showAppearanceSelectionDialog() {
-    final isDarkMode = ref.read(appSettingsProvider).isDarkMode;
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Select Appearance'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildAppearanceOption('Light Mode', false, !isDarkMode),
-            const SizedBox(height: 10),
-            _buildAppearanceOption('Dark Mode', true, isDarkMode),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAppearanceOption(String label, bool isDark, bool isSelected) {
-    return ListTile(
-      title: Text(label),
-      trailing: isSelected
-          ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
-          : null,
-      onTap: () {
-        ref.read(appSettingsProvider.notifier).updateTheme(isDark);
-        Navigator.pop(context);
-      },
-    );
-  }
-
   void _showDrinksInfoDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Drink Categories'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildDrinkCategory('Water', 'Pure water for hydration', Icons.water_drop),
-            const SizedBox(height: 10),
-            _buildDrinkCategory('Coffee', 'Coffee and espresso drinks', Icons.coffee),
-            const SizedBox(height: 10),
-            _buildDrinkCategory('Tea', 'Various types of tea', Icons.local_cafe),
-            const SizedBox(height: 10),
-            _buildDrinkCategory('Milk', 'Dairy and plant-based milk', Icons.local_drink),
-            const SizedBox(height: 10),
-            _buildDrinkCategory('Smoothie', 'Fruit and vegetable smoothies', Icons.blender),
-            const SizedBox(height: 10),
-            _buildDrinkCategory('Juice', 'Fresh fruit and vegetable juices', Icons.local_bar),
-          ],
+        title: Text(
+          'Drink Categories',
+          style: AppTextStyles.inter20Bold,
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildDrinkCategory(
+                'Water',
+                'Pure water for hydration',
+                AppAssets.drinkWater,
+              ),
+              _buildDrinkCategory(
+                'Coffee',
+                'Coffee and espresso drinks',
+                AppAssets.drinkCoffee,
+              ),
+              _buildDrinkCategory(
+                'Tea',
+                'Various types of tea',
+                AppAssets.drinkTea,
+              ),
+              _buildDrinkCategory(
+                'Milk',
+                'Dairy and plant-based milk',
+                AppAssets.drinkMilk,
+              ),
+              _buildDrinkCategory(
+                'Smoothie',
+                'Fruit and vegetable smoothies',
+                AppAssets.drinkSmoothie,
+              ),
+              _buildDrinkCategory(
+                'Juice',
+                'Fresh fruit and vegetable juices',
+                AppAssets.drinkJuice,
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+            child: Text(
+              'Close',
+              style: AppTextStyles.inter14Medium.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDrinkCategory(String name, String description, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, color: Theme.of(context).colorScheme.primary, size: 20),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                name,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-              Text(
-                description,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
-                ),
-              ),
-            ],
+  Widget _buildDrinkCategory(String name, String description, String asset) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 40,
+            height: 40,
+            child: Center(
+              child: AppSvg(asset, width: 28, height: 28),
+            ),
           ),
-        ),
-      ],
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: AppTextStyles.inter14SemiBold.copyWith(
+                    color: colors.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  description,
+                  style: AppTextStyles.inter12Regular.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

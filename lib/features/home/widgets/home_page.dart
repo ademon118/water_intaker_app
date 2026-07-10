@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../../dashboard/widgets/dashboard_page.dart';
+import '../../../app_tokens.dart';
+import '../../../core/app_assets.dart';
+import '../../../core/app_toast.dart';
 import '../../rewards/widgets/rewards_page.dart';
 import '../../settings/widgets/settings_page.dart';
 import '../../statistics/widgets/statistics_page.dart';
 import 'add_water_popup.dart';
+import 'arc_progress_gauge.dart';
 import 'reminder_popup.dart';
 import 'set_goal_popup.dart';
 import '../../rewards/widgets/congratulations_popup.dart';
-import '../../../services/water_intake_service.dart';
 import '../../../services/user_settings_service.dart';
 import '../../../services/reminder_service.dart';
 import '../../../services/water_intake_provider.dart';
 import '../../../services/rewards_service.dart';
 import '../../../services/app_settings_provider.dart';
 import '../../../models/water_intake.dart';
-import '../../../models/user_settings.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -35,7 +35,6 @@ class _HomePageState extends ConsumerState<HomePage> {
   bool _showSetGoalPopup = false;
   bool _showNavigationDrawer = false;
   bool _hasShownCongratulationsPopup = false;
-  final PageController _pageController = PageController();
 
   @override
   void initState() {
@@ -45,7 +44,6 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   void dispose() {
-    _pageController.dispose();
     super.dispose();
   }
 
@@ -134,41 +132,92 @@ class _HomePageState extends ConsumerState<HomePage> {
         currentGoalIntake, 
         selectedDate,
       );
+
+      _maybeShowCongratulations();
       
       // Show success message
       if (mounted) {
-        final unit = ref.read(appSettingsProvider).unit;
-        final displayAmount = ref.read(appSettingsProvider.notifier).convertToDisplayUnit(amount.toDouble());
-        final unitLabel = ref.read(appSettingsProvider.notifier).getUnitAbbreviation();
+        final displayAmount = ref
+            .read(appSettingsProvider.notifier)
+            .convertToDisplayUnit(amount.toDouble());
+        final unitLabel =
+            ref.read(appSettingsProvider.notifier).getUnitAbbreviation();
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Added ${displayAmount.toInt()}$unitLabel of $drinkType'),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.fixed,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
+        AppToast.show(
+          context,
+          message:
+              'Added ${displayAmount.toInt()}$unitLabel of $drinkType. Keep hydrating!',
+          type: AppToastType.drinkAdded,
         );
       }
     } catch (e) {
       print('Error adding water intake: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Error adding drink. Please try again.'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.fixed,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
+        AppToast.show(
+          context,
+          message: 'Error adding drink. Please try again.',
+          type: AppToastType.error,
         );
       }
     }
+  }
+
+  void _maybeShowCongratulations() {
+    if (!mounted || _hasShownCongratulationsPopup) return;
+
+    final latestBadge =
+        ref.read(rewardsNotifierProvider.notifier).getLatestUnlockedBadge();
+    final latestAchievement = ref
+        .read(rewardsNotifierProvider.notifier)
+        .getLatestCompletedAchievement();
+    final itemToShow = latestBadge ?? latestAchievement;
+
+    if (itemToShow == null) return;
+
+    _hasShownCongratulationsPopup = true;
+    final isBadge = latestBadge != null;
+    final displayName = isBadge
+        ? (itemToShow['name'] as String?) ?? 'Unknown Badge'
+        : (itemToShow['title'] as String?) ?? 'Unknown Achievement';
+    final description =
+        (itemToShow['description'] as String?) ?? 'No description available';
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => CongratulationsPopup(
+        badgeName: displayName,
+        badgeDescription: description,
+        onSave: () {
+          if (isBadge) {
+            ref.read(rewardsNotifierProvider.notifier).clearNewlyUnlockedBadges();
+          } else {
+            ref
+                .read(rewardsNotifierProvider.notifier)
+                .clearNewlyCompletedAchievements();
+          }
+        },
+        onViewBadge: () {
+          if (isBadge) {
+            ref.read(rewardsNotifierProvider.notifier).clearNewlyUnlockedBadges();
+          } else {
+            ref
+                .read(rewardsNotifierProvider.notifier)
+                .clearNewlyCompletedAchievements();
+          }
+          Navigator.pushNamed(context, '/rewards');
+        },
+      ),
+    ).then((_) {
+      if (!mounted) return;
+      if (isBadge) {
+        ref.read(rewardsNotifierProvider.notifier).clearNewlyUnlockedBadges();
+      } else {
+        ref
+            .read(rewardsNotifierProvider.notifier)
+            .clearNewlyCompletedAchievements();
+      }
+    });
   }
 
   void _updateProgress() {
@@ -202,22 +251,22 @@ class _HomePageState extends ConsumerState<HomePage> {
       snoozeDuration: snoozeDuration,
     );
     
-    // Show success message with next reminder time
-    if (mounted && mode != 'Off') {
-      final intervalMinutes = _getDurationInMinutes(snoozeDuration);
-      final nextReminderTime = _getNextReminderTime(intervalMinutes);
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Reminders set! Next reminder in ${intervalMinutes} minutes'),
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          duration: const Duration(seconds: 3),
-          behavior: SnackBarBehavior.fixed,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
+    if (mounted) {
+      if (mode == 'Off') {
+        AppToast.show(
+          context,
+          message: 'Reminders turned off. You can enable them anytime.',
+          type: AppToastType.reminderSet,
+        );
+      } else {
+        final intervalMinutes = _getDurationInMinutes(snoozeDuration);
+        AppToast.show(
+          context,
+          message:
+              'Reminder set! Next alert in ${intervalMinutes} minutes.',
+          type: AppToastType.reminderSet,
+        );
+      }
     }
     
     // No need to reload data since we're now watching the provider
@@ -284,72 +333,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     final goalIntake = userSettings.dailyGoal;
     
 
-    
-
-
-                // Show congratulations popup for any newly unlocked badge or completed achievement
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              final latestBadge = ref.read(rewardsNotifierProvider.notifier).getLatestUnlockedBadge();
-              final latestAchievement = ref.read(rewardsNotifierProvider.notifier).getLatestCompletedAchievement();
-              
-              if ((latestBadge != null || latestAchievement != null) && mounted && !_hasShownCongratulationsPopup) {
-                setState(() {
-                  _hasShownCongratulationsPopup = true;
-                });
-                // Add a small delay to ensure the UI is fully updated
-                Future.delayed(const Duration(milliseconds: 500), () {
-                  if (mounted) {
-                    // Show badge popup if available, otherwise show achievement popup
-                    final itemToShow = latestBadge ?? latestAchievement;
-                    final isBadge = latestBadge != null;
-                    
-                    if (itemToShow != null) {
-                      // Get the correct name/title based on whether it's a badge or achievement
-                      final displayName = isBadge 
-                          ? (itemToShow['name'] as String?) ?? 'Unknown Badge'
-                          : (itemToShow['title'] as String?) ?? 'Unknown Achievement';
-                      
-                      final description = (itemToShow['description'] as String?) ?? 'No description available';
-                      
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (context) => CongratulationsPopup(
-                          badgeName: displayName,
-                          badgeDescription: description,
-                          onSave: () {
-                            if (isBadge) {
-                              ref.read(rewardsNotifierProvider.notifier).clearNewlyUnlockedBadges();
-                            } else {
-                              ref.read(rewardsNotifierProvider.notifier).clearNewlyCompletedAchievements();
-                            }
-                          },
-                          onViewBadge: () {
-                            if (isBadge) {
-                              ref.read(rewardsNotifierProvider.notifier).clearNewlyUnlockedBadges();
-                            } else {
-                              ref.read(rewardsNotifierProvider.notifier).clearNewlyCompletedAchievements();
-                            }
-                            Navigator.pushNamed(context, '/rewards');
-                          },
-                        ),
-                      );
-                    }
-                  }
-                });
-              }
-            });
-
-
-
     return Scaffold(
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
+      body: IndexedStack(
+        index: _currentIndex,
         children: [
           _buildHomeContent(),
           const StatisticsPage(),
@@ -366,85 +352,83 @@ class _HomePageState extends ConsumerState<HomePage> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
-          // Main content with dimming effect
-          Opacity(
-            opacity: (_showAddWaterPopup || _showReminderPopup || _showSetGoalPopup || _showNavigationDrawer) ? 0.3 : 1.0,
-            child: SafeArea(
-              child: Column(
-                children: [
-                  _buildHeader(),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildProgressCircle(),
-                          const SizedBox(height: 20),
-                          _buildInfoCards(),
-                          const SizedBox(height: 20),
-                          _buildTodayDrinks(ref.read(waterIntakeNotifierProvider.notifier).getDrinkTypeBreakdownForDate(ref.watch(selectedDateNotifierProvider))),
-                        ],
-                      ),
+          SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(child: _buildProgressCircle()),
+                        const SizedBox(height: 20),
+                        _buildInfoCards(),
+                        const SizedBox(height: 20),
+                        _buildTodayDrinks(ref
+                            .read(waterIntakeNotifierProvider.notifier)
+                            .getDrinkTypeBreakdownForDate(
+                                ref.watch(selectedDateNotifierProvider))),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
 
-          // Add Water Popup
           if (_showAddWaterPopup)
-            AddWaterPopup(
-              onClose: () {
-                setState(() {
-                  _showAddWaterPopup = false;
-                });
-              },
-              onAddWater: _addWaterIntake,
+            Positioned.fill(
+              child: AddWaterPopup(
+                onClose: () {
+                  setState(() {
+                    _showAddWaterPopup = false;
+                  });
+                },
+                onAddWater: _addWaterIntake,
+              ),
             ),
-          
-          // Reminder Popup
+
           if (_showReminderPopup)
-            ReminderPopup(
-              onClose: () {
-                setState(() {
-                  _showReminderPopup = false;
-                });
-              },
-              onSaveReminder: _saveReminder,
+            Positioned.fill(
+              child: ReminderPopup(
+                onClose: () {
+                  setState(() {
+                    _showReminderPopup = false;
+                  });
+                },
+                onSaveReminder: _saveReminder,
+              ),
             ),
-          
-          // Set Goal Popup
+
           if (_showSetGoalPopup)
-            SetGoalPopup(
-              currentGoal: ref.watch(appSettingsProvider).dailyGoal,
-              onClose: () {
-                setState(() {
-                  _showSetGoalPopup = false;
-                });
-              },
-              onSaveGoal: _saveGoal,
+            Positioned.fill(
+              child: SetGoalPopup(
+                currentGoal: ref.watch(appSettingsProvider).dailyGoal,
+                onClose: () {
+                  setState(() {
+                    _showSetGoalPopup = false;
+                  });
+                },
+                onSaveGoal: _saveGoal,
+              ),
             ),
           
           // Navigation Drawer
           if (_showNavigationDrawer)
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  _showNavigationDrawer = false;
-                });
-              },
-              child: Container(
-                color: Colors.transparent,
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _showNavigationDrawer = false;
+                  });
+                },
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _buildNavigationDrawer(),
-                    Expanded(
-                      child: Container(
-                        color: Colors.transparent,
-                      ),
-                    ),
+                    const Expanded(child: SizedBox()),
                   ],
                 ),
               ),
@@ -489,87 +473,22 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-    Widget _buildHeader() {
+  Widget _buildHeader() {
     final screenWidth = MediaQuery.of(context).size.width;
-    
-    // Responsive sizing
-    double horizontalPadding;
-    double verticalPadding;
-    double iconSize;
-    double fontSize;
-    double spacing;
-    
-    if (screenWidth < 600) {
-      // Mobile
-      horizontalPadding = 20;
-      verticalPadding = 15;
-      iconSize = 24;
-      fontSize = 18;
-      spacing = 15;
-    } else if (screenWidth < 1200) {
-      // Tablet
-      horizontalPadding = 30;
-      verticalPadding = 20;
-      iconSize = 28;
-      fontSize = 20;
-      spacing = 20;
-    } else {
-      // Desktop
-      horizontalPadding = 40;
-      verticalPadding = 25;
-      iconSize = 32;
-      fontSize = 24;
-      spacing = 25;
-    }
-    
+    final colors = Theme.of(context).colorScheme;
+    final horizontalPadding = screenWidth < 600 ? 20.0 : 30.0;
+    final iconSize = screenWidth < 600 ? 24.0 : 28.0;
+    final fontSize = screenWidth < 600 ? 18.0 : 20.0;
+
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 15),
       child: Row(
         children: [
-          // Hamburger menu icon
           GestureDetector(
-            onTap: () {
-              setState(() {
-                _showNavigationDrawer = true;
-              });
-            },
-            child: Icon(Icons.menu, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6), size: iconSize),
+            onTap: () => setState(() => _showNavigationDrawer = true),
+            child: Icon(Icons.menu, color: colors.onSurface, size: iconSize),
           ),
-          
-          SizedBox(width: spacing),
-          
-          // Test notification button
-          GestureDetector(
-            onTap: () async {
-              await ReminderService.showTestNotification();
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Test notification sent!'),
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    duration: const Duration(seconds: 2),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              }
-            },
-            child: Container(
-              padding: EdgeInsets.all(iconSize * 0.33),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                Icons.notifications,
-                color: Theme.of(context).colorScheme.onPrimary,
-                size: iconSize * 0.83,
-              ),
-            ),
-          ),
-
           const Spacer(),
-
-          // Today text with dropdown arrow (centered)
           GestureDetector(
             onTap: () async {
               final DateTime? picked = await showDatePicker(
@@ -581,48 +500,46 @@ class _HomePageState extends ConsumerState<HomePage> {
                   return Theme(
                     data: Theme.of(context).copyWith(
                       colorScheme: ColorScheme.light(
-                        primary: Theme.of(context).colorScheme.primary,
-                        onPrimary: Theme.of(context).colorScheme.onPrimary,
-                        surface: Theme.of(context).colorScheme.surface,
-                        onSurface: Theme.of(context).colorScheme.onSurface,
+                        primary: colors.primary,
+                        onPrimary: colors.onPrimary,
+                        surface: colors.surface,
+                        onSurface: colors.onSurface,
                       ),
                     ),
                     child: child!,
                   );
                 },
               );
-                             if (picked != null && picked != ref.read(selectedDateNotifierProvider)) {
-                 ref.read(selectedDateNotifierProvider.notifier).setDate(picked);
-                 ref.read(waterIntakeNotifierProvider.notifier).loadIntakesForDate(picked);
-                 // Reload data and update progress for the new date
-                 await _loadData();
-               }
+              if (picked != null &&
+                  picked != ref.read(selectedDateNotifierProvider)) {
+                ref.read(selectedDateNotifierProvider.notifier).setDate(picked);
+                ref
+                    .read(waterIntakeNotifierProvider.notifier)
+                    .loadIntakesForDate(picked);
+                await _loadData();
+              }
             },
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   _getDateText(),
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    fontSize: fontSize,
-                    fontWeight: FontWeight.w500,
+                  style: AppTextStyles.interSemiBold(
+                    fontSize,
+                    color: colors.onSurface,
                   ),
                 ),
-                SizedBox(width: spacing * 0.53),
+                const SizedBox(width: 4),
                 Icon(
                   Icons.keyboard_arrow_down,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                  size: iconSize * 0.83,
+                  color: colors.onSurfaceVariant,
+                  size: iconSize * 0.9,
                 ),
               ],
             ),
           ),
-
           const Spacer(),
-
-          // Grid icon
-          Icon(Icons.grid_view, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6), size: iconSize),
+          Icon(Icons.grid_view, color: colors.onSurface, size: iconSize),
         ],
       ),
     );
@@ -630,259 +547,91 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   Widget _buildProgressCircle() {
     final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
     final userSettings = ref.watch(appSettingsProvider);
     final goalIntake = userSettings.dailyGoal;
-    
-    // Responsive sizing based on screen size
-    double containerSize;
-    double circleSize;
-    double iconSize;
-    double fontSize;
-    double subFontSize;
-    
-    if (screenWidth < 600) {
-      // Mobile
-      containerSize = screenWidth * 0.7;
-      circleSize = containerSize * 0.88;
-      iconSize = containerSize * 0.24;
-      fontSize = 24;
-      subFontSize = 16;
-    } else if (screenWidth < 1200) {
-      // Tablet
-      containerSize = screenWidth * 0.4;
-      circleSize = containerSize * 0.88;
-      iconSize = containerSize * 0.24;
-      fontSize = 28;
-      subFontSize = 18;
-    } else {
-      // Desktop
-      containerSize = screenWidth * 0.25;
-      circleSize = containerSize * 0.88;
-      iconSize = containerSize * 0.24;
-      fontSize = 32;
-      subFontSize = 20;
-    }
-    
-    return Center(
-      child: Container(
-        width: containerSize,
-        height: containerSize,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Progress Circle with exact colors from Figma
-            SizedBox(
-              width: circleSize,
-              height: circleSize,
-              child: CircularProgressIndicator(
-                value: _progress,
-                strokeWidth: circleSize * 0.14,
-                backgroundColor: Theme.of(context).colorScheme.surface,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  Theme.of(context).colorScheme.primary,
-                ),
-              ),
-            ),
-            // Debug info (remove in production)
-            Positioned(
-              top: 10,
-              right: 10,
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  'P: ${_progress.toStringAsFixed(3)}',
-                  style: const TextStyle(color: Colors.white, fontSize: 10),
-                ),
-              ),
-            ),
+    final colors = Theme.of(context).colorScheme;
+    final unit = ref.read(appSettingsProvider.notifier).getUnitAbbreviation();
+    final intake = ref
+        .read(appSettingsProvider.notifier)
+        .convertToDisplayUnit(_currentIntake)
+        .toInt();
+    final goal = ref
+        .read(appSettingsProvider.notifier)
+        .convertToDisplayUnit(goalIntake)
+        .toInt();
 
-            // Center Content
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Water Drop Icon with Ripple Effect
-                Container(
-                  width: iconSize,
-                  height: iconSize,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary, // 00B4D8 for water drop
-                    borderRadius: BorderRadius.circular(iconSize / 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-                        spreadRadius: 2,
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    Icons.water_drop,
-                    color: Theme.of(context).colorScheme.onPrimary,
-                    size: iconSize * 0.5,
-                  ),
-                ),
-                SizedBox(height: iconSize * 0.25),
+    final gaugeSize = screenWidth < 600
+        ? screenWidth * 0.62
+        : screenWidth < 1200
+            ? screenWidth * 0.38
+            : screenWidth * 0.24;
 
-                // Intake Text
-                Text(
-                  '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(_currentIntake).toInt()}${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
-                  style: TextStyle(
-                    fontSize: fontSize,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-                Text(
-                  '/${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(goalIntake).toInt()}${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
-                  style: TextStyle(fontSize: subFontSize, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
-                ),
-                // Debug info (remove in production)
-                // Text(
-                //   'Raw: ${_currentIntake.toInt()}/${goalIntake.toInt()}',
-                //   style: TextStyle(fontSize: 10, color: Colors.red),
-                // ),
-              ],
-            ),
-          ],
-        ),
+    return ArcProgressGauge(
+      progress: _progress,
+      size: gaugeSize,
+      strokeWidth: gaugeSize * 0.11,
+      trackColor: const Color(0xFFE8EEF5),
+      progressColor: colors.primary,
+      intakeText: '$intake$unit',
+      goalText: '/$goal$unit',
+      centerChild: AppSvg(
+        AppAssets.waterDrop,
+        width: gaugeSize * 0.32,
+        height: gaugeSize * 0.32,
       ),
     );
   }
 
   Widget _buildInfoCards() {
-    final screenWidth = MediaQuery.of(context).size.width;
     final userSettings = ref.watch(appSettingsProvider);
     final goalIntake = userSettings.dailyGoal;
-    
-    // Responsive layout based on screen size
-    if (screenWidth < 600) {
-      // Mobile - Stack vertically
-      return Column(
-        children: [
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                _showReminderPopup = true;
-              });
-            },
+
+    return Row(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () => setState(() => _showReminderPopup = true),
             child: _buildInfoCard(
               title: 'Reminder',
               value: _getReminderDisplayValue(),
-              icon: Icons.notifications,
-              iconColor: Theme.of(context).colorScheme.primary,
+              asset: AppAssets.reminder,
             ),
           ),
-          const SizedBox(height: 15),
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                _showSetGoalPopup = true;
-              });
-            },
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: GestureDetector(
+            onTap: () => setState(() => _showSetGoalPopup = true),
             child: _buildInfoCard(
               title: 'Goal',
-              value: '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(goalIntake).toInt()}${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
-              icon: Icons.track_changes,
-              iconColor: Theme.of(context).colorScheme.primary,
+              value:
+                  '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(goalIntake).toInt()}${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
+              asset: AppAssets.target,
             ),
           ),
-        ],
-      );
-    } else {
-      // Tablet and Desktop - Side by side
-      return Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _showReminderPopup = true;
-                });
-              },
-                          child: _buildInfoCard(
-              title: 'Reminder',
-              value: _getReminderDisplayValue(),
-              icon: Icons.notifications,
-              iconColor: Theme.of(context).colorScheme.primary,
-            ),
-            ),
-          ),
-          SizedBox(width: screenWidth < 1200 ? 15 : 20),
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _showSetGoalPopup = true;
-                });
-              },
-              child: _buildInfoCard(
-                title: 'Goal',
-                value: '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(goalIntake).toInt()}${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
-                icon: Icons.track_changes,
-                iconColor: Theme.of(context).colorScheme.primary,
-            ),
-            ),
-          ),
-        ],
-      );
-    }
+        ),
+      ],
+    );
   }
 
   Widget _buildInfoCard({
     required String title,
     required String value,
-    required IconData icon,
-    required Color iconColor,
+    required String asset,
   }) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    
-    // Responsive sizing
-    double padding;
-    double titleFontSize;
-    double valueFontSize;
-    double iconSize;
-    double iconContainerSize;
-    
-    if (screenWidth < 600) {
-      // Mobile
-      padding = 16;
-      titleFontSize = 14;
-      valueFontSize = 22;
-      iconSize = 18;
-      iconContainerSize = 36;
-    } else if (screenWidth < 1200) {
-      // Tablet
-      padding = 20;
-      titleFontSize = 16;
-      valueFontSize = 26;
-      iconSize = 20;
-      iconContainerSize = 40;
-    } else {
-      // Desktop
-      padding = 24;
-      titleFontSize = 18;
-      valueFontSize = 30;
-      iconSize = 22;
-      iconContainerSize = 44;
-    }
-    
+    final colors = Theme.of(context).colorScheme;
+
     return Container(
-      padding: EdgeInsets.all(padding),
+      height: 88,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(15),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).shadowColor.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, 1),
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -891,36 +640,21 @@ class _HomePageState extends ConsumerState<HomePage> {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   title,
-                  style: TextStyle(fontSize: titleFontSize, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
+                  style: AppTextStyles.interMedium(13).copyWith(color: colors.onSurfaceVariant),
                 ),
-                SizedBox(height: padding * 0.25),
+                const SizedBox(height: 6),
                 Text(
                   value,
-                  style: TextStyle(
-                    fontSize: valueFontSize,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
+                  style: AppTextStyles.inter22Bold.copyWith(color: colors.onSurface),
                 ),
               ],
             ),
           ),
-          Container(
-            width: iconContainerSize,
-            height: iconContainerSize,
-            decoration: BoxDecoration(
-              color: iconColor,
-              borderRadius: BorderRadius.circular(iconContainerSize / 2),
-            ),
-            child: Icon(
-              icon,
-              color: Theme.of(context).colorScheme.onPrimary,
-              size: iconSize,
-            ),
-          ),
+          AppSvg(asset, width: 40, height: 40),
         ],
       ),
     );
@@ -928,314 +662,108 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   Widget _buildTodayDrinks(Map<String, int> drinkBreakdown) {
     final drinkEntries = drinkBreakdown.entries.toList();
-    
+    final colors = Theme.of(context).colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Today Drinks',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
+          style: AppTextStyles.inter20Bold.copyWith(color: colors.onSurface),
         ),
         const SizedBox(height: 15),
         Container(
-          padding: const EdgeInsets.all(20),
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(15),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Theme.of(context).shadowColor.withOpacity(0.1),
-                spreadRadius: 1,
-                blurRadius: 3,
-                offset: const Offset(0, 1),
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
-          child: drinkEntries.isNotEmpty 
-              ? _buildDrinkCardsGrid(drinkEntries)
+          child: drinkEntries.isNotEmpty
+              ? SizedBox(
+                  height: 140,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: drinkEntries.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    itemBuilder: (context, index) {
+                      final entry = drinkEntries[index];
+                      final amount =
+                          '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(entry.value.toDouble()).toInt()}${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}';
+                      return _buildDrinkCard(
+                        drinkType: entry.key,
+                        name: entry.key,
+                        amount: amount,
+                      );
+                    },
+                  ),
+                )
               : _buildEmptyState(),
         ),
       ],
     );
   }
 
-  Widget _buildDrinkCardsGrid(List<MapEntry<String, int>> drinkEntries) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    
-    // Responsive grid configuration
-    int crossAxisCount;
-    double childAspectRatio;
-    double spacing;
-    
-    if (screenWidth < 600) {
-      // Mobile
-      crossAxisCount = 2;
-      childAspectRatio = 1.4;
-      spacing = 10;
-    } else if (screenWidth < 1200) {
-      // Tablet
-      crossAxisCount = 3;
-      childAspectRatio = 1.3;
-      spacing = 15;
-    } else {
-      // Desktop
-      crossAxisCount = 4;
-      childAspectRatio = 1.2;
-      spacing = 20;
-    }
-    
-    return ConstrainedBox(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.4,
-      ),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossAxisCount,
-          crossAxisSpacing: spacing,
-          mainAxisSpacing: spacing,
-          childAspectRatio: childAspectRatio,
-        ),
-        itemCount: drinkEntries.length,
-        itemBuilder: (context, index) {
-          final entry = drinkEntries[index];
-          return _buildDrinkCard(
-            icon: _getDrinkIcon(entry.key),
-            name: entry.key,
-            amount: '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(entry.value.toDouble()).toInt()}${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
-          );
-        },
-      ),
-    );
-  }
+  Widget _buildDrinkCard({
+    required String drinkType,
+    required String name,
+    required String amount,
+  }) {
+    final colors = Theme.of(context).colorScheme;
 
-  Widget _buildEmptyState() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    
-    // Use the same responsive grid configuration as drink cards
-    int crossAxisCount;
-    double childAspectRatio;
-    double spacing;
-    
-    if (screenWidth < 600) {
-      // Mobile
-      crossAxisCount = 2;
-      childAspectRatio = 1.4;
-      spacing = 10;
-    } else if (screenWidth < 1200) {
-      // Tablet
-      crossAxisCount = 3;
-      childAspectRatio = 1.3;
-      spacing = 15;
-    } else {
-      // Desktop
-      crossAxisCount = 4;
-      childAspectRatio = 1.2;
-      spacing = 20;
-    }
-    
-    return ConstrainedBox(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.4,
-      ),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossAxisCount,
-          crossAxisSpacing: spacing,
-          mainAxisSpacing: spacing,
-          childAspectRatio: childAspectRatio,
-        ),
-        itemCount: 1, // Single empty card
-        itemBuilder: (context, index) {
-          return _buildEmptyCard();
-        },
-      ),
-    );
-  }
-
-  Widget _buildEmptyCard() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    
-    // Use the same responsive sizing as drink cards
-    double padding;
-    double iconSize;
-    double nameFontSize;
-    double amountFontSize;
-    double spacing;
-    
-    if (screenWidth < 600) {
-      // Mobile
-      padding = 12;
-      iconSize = 32;
-      nameFontSize = 14;
-      amountFontSize = 12;
-      spacing = 8;
-    } else if (screenWidth < 1200) {
-      // Tablet
-      padding = 15;
-      iconSize = 36;
-      nameFontSize = 16;
-      amountFontSize = 14;
-      spacing = 10;
-    } else {
-      // Desktop
-      padding = 18;
-      iconSize = 40;
-      nameFontSize = 18;
-      amountFontSize = 16;
-      spacing = 12;
-    }
-    
     return Container(
-      padding: EdgeInsets.symmetric(vertical: padding, horizontal: padding * 0.75),
+      width: 110,
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.3)),
+        color: colors.primaryContainer.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.water_drop,
-            size: iconSize,
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+          AppSvg(
+            AppAssets.drinkAssetFor(drinkType),
+            width: 36,
+            height: 36,
           ),
-          SizedBox(height: spacing),
-          Flexible(
-            child: Text(
-              'No drinks today',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: nameFontSize,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
+          const SizedBox(height: 10),
+          Text(
+            name,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.inter14SemiBold.copyWith(color: colors.onSurface),
           ),
-          SizedBox(height: spacing * 0.5),
-          Flexible(
-            child: Text(
-              'Tap + to add',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: amountFontSize,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+          const SizedBox(height: 4),
+          Text(
+            amount,
+            style: AppTextStyles.inter12Medium
+                .copyWith(color: colors.onSurfaceVariant),
           ),
         ],
       ),
     );
   }
 
-  IconData _getDrinkIcon(String drinkType) {
-    switch (drinkType.toLowerCase()) {
-      case 'water':
-        return Icons.water_drop;
-      case 'coffee':
-        return FontAwesomeIcons.coffee;
-      case 'tea':
-        return FontAwesomeIcons.mugHot;
-      case 'milk':
-        return FontAwesomeIcons.mugSaucer;
-      case 'smoothie':
-        return FontAwesomeIcons.blender;
-      case 'juice':
-        return FontAwesomeIcons.wineGlass;
-      default:
-        return Icons.local_bar;
-    }
-  }
-
-  Widget _buildDrinkCard({
-    required IconData icon,
-    required String name,
-    required String amount,
-  }) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    
-    // Responsive sizing
-    double padding;
-    double iconSize;
-    double nameFontSize;
-    double amountFontSize;
-    double spacing;
-    
-    if (screenWidth < 600) {
-      // Mobile
-      padding = 12;
-      iconSize = 32;
-      nameFontSize = 14;
-      amountFontSize = 12;
-      spacing = 8;
-    } else if (screenWidth < 1200) {
-      // Tablet
-      padding = 15;
-      iconSize = 36;
-      nameFontSize = 16;
-      amountFontSize = 14;
-      spacing = 10;
-    } else {
-      // Desktop
-      padding = 18;
-      iconSize = 40;
-      nameFontSize = 18;
-      amountFontSize = 16;
-      spacing = 12;
-    }
-    
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: padding, horizontal: padding * 0.75),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
+  Widget _buildEmptyState() {
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Theme.of(context).colorScheme.onSurface, size: iconSize),
-          SizedBox(height: spacing),
-          Flexible(
-            child: Text(
-              name,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: nameFontSize,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          SizedBox(height: spacing * 0.5),
-          Flexible(
-            child: Text(
-              amount, 
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: amountFontSize, 
-                color: Theme.of(context).colorScheme.onSurface,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+          AppSvg(AppAssets.drinkWater, width: 40, height: 40),
+          const SizedBox(height: 12),
+          Text(
+            'No drinks yet today',
+            style: AppTextStyles.inter14Regular
+                .copyWith(color: colors.onSurfaceVariant),
           ),
         ],
       ),
@@ -1268,6 +796,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     final screenWidth = MediaQuery.of(context).size.width;
     final userSettings = ref.watch(appSettingsProvider);
     final goalIntake = userSettings.dailyGoal;
+    final colors = Theme.of(context).colorScheme;
     
     // Responsive drawer width
     double drawerWidth;
@@ -1282,142 +811,188 @@ class _HomePageState extends ConsumerState<HomePage> {
       drawerWidth = 400;
     }
     
+    final topInset = MediaQuery.of(context).padding.top;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       width: drawerWidth,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: const BorderRadius.only(
-            topRight: Radius.circular(20),
-            bottomRight: Radius.circular(20),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Theme.of(context).shadowColor.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(2, 0),
-            ),
-          ],
+      child: ClipRRect(
+        borderRadius: const BorderRadius.only(
+          topRight: Radius.circular(20),
+          bottomRight: Radius.circular(20),
         ),
-        child: Column(
-          children: [
-            // Header Section with Blue Background
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-                borderRadius: const BorderRadius.only(
-                  topRight: Radius.circular(20),
-                ),
-              ),
-              child: Column(
-                children: [
-                  // Back Arrow and User Section
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _showNavigationDrawer = false;
-                          });
-                        },
-                        child: Icon(
-                          Icons.arrow_back,
-                          color: Theme.of(context).colorScheme.onPrimary,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 20),
-                      // User Avatar
-                      Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.onPrimary,
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                        child: Icon(
-                          Icons.person,
-                          color: Theme.of(context).colorScheme.primary,
-                          size: 30,
-                        ),
-                      ),
-                      const SizedBox(width: 15),
-                      // User Info
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Daily Goal',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.onPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            // Goal Chip
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.onPrimary,
-                                borderRadius: const BorderRadius.all(Radius.circular(15)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.flag,
-                                    color: Theme.of(context).colorScheme.error,
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    '${goalIntake.toInt()}ml',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: Theme.of(context).colorScheme.primary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            
-            // Navigation Items
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                child: Column(
+        child: Material(
+          elevation: 8,
+          shadowColor: Colors.black.withValues(alpha: 0.15),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                width: double.infinity,
+                color: colors.primary,
+                padding: EdgeInsets.fromLTRB(20, topInset + 12, 20, 20),
+                child: Row(
                   children: [
-                    _buildNavigationItem('Home', Icons.home, true, () {}),
-                    _buildNavigationItem('Dashboard', Icons.dashboard, false, () {}),
-                    _buildNavigationItem('Reminders', Icons.notifications, false, () {}),
-                    _buildNavigationItem('Achievements', Icons.star, false, () {}),
-                    _buildNavigationItem('Health Care Tips', Icons.lightbulb, false, () {}),
-                    _buildNavigationItem('Profile', Icons.person, false, () {}),
-                    _buildNavigationItem('Setting', Icons.settings, false, () {}),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _showNavigationDrawer = false;
+                        });
+                      },
+                      child: Icon(
+                        Icons.arrow_back,
+                        color: colors.onPrimary,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: colors.onPrimary,
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      child: Center(
+                        child: AppSvg(
+                          AppAssets.drawerProfile,
+                          width: 30,
+                          height: 30,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Daily Goal',
+                            style: AppTextStyles.inter18Bold
+                                .copyWith(color: colors.onPrimary),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colors.onPrimary,
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.flag,
+                                  color: colors.error,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '${goalIntake.toInt()}ml',
+                                  style: AppTextStyles.inter14SemiBold
+                                      .copyWith(color: colors.primary),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ),
-          ],
+              Expanded(
+                child: ColoredBox(
+                  color: colors.surface,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    child: Column(
+                      children: [
+                        _buildNavigationItem(
+                          'Home',
+                          AppAssets.drawerHome,
+                          true,
+                          () {
+                            setState(() {
+                              _showNavigationDrawer = false;
+                              _currentIndex = 0;
+                            });
+                          },
+                        ),
+                        _buildNavigationItem(
+                          'Dashboard',
+                          AppAssets.drawerDashboard,
+                          false,
+                          () => setState(() => _showNavigationDrawer = false),
+                        ),
+                        _buildNavigationItem(
+                          'Reminders',
+                          AppAssets.drawerReminder,
+                          false,
+                          () {
+                            setState(() {
+                              _showNavigationDrawer = false;
+                              _showReminderPopup = true;
+                            });
+                          },
+                        ),
+                        _buildNavigationItem(
+                          'Achievements',
+                          AppAssets.drawerAchievements,
+                          false,
+                          () {
+                            setState(() {
+                              _showNavigationDrawer = false;
+                              _currentIndex = 2;
+                            });
+                          },
+                        ),
+                        _buildNavigationItem(
+                          'Health Care Tips',
+                          AppAssets.drawerHealthTips,
+                          false,
+                          () => setState(() => _showNavigationDrawer = false),
+                        ),
+                        _buildNavigationItem(
+                          'Profile',
+                          AppAssets.drawerProfile,
+                          false,
+                          () => setState(() => _showNavigationDrawer = false),
+                        ),
+                        _buildNavigationItem(
+                          'Setting',
+                          AppAssets.drawerSettings,
+                          false,
+                          () {
+                            setState(() {
+                              _showNavigationDrawer = false;
+                              _currentIndex = 3;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildNavigationItem(String title, IconData icon, bool isSelected, VoidCallback onTap) {
+  Widget _buildNavigationItem(
+    String title,
+    String asset,
+    bool isSelected,
+    VoidCallback onTap,
+  ) {
+    final colors = Theme.of(context).colorScheme;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
       child: Material(
@@ -1428,27 +1003,24 @@ class _HomePageState extends ConsumerState<HomePage> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: isSelected ? Theme.of(context).colorScheme.primary.withOpacity(0.1) : Colors.transparent,
+              color: isSelected
+                  ? colors.primary.withValues(alpha: 0.1)
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
-              border: isSelected 
-                  ? Border.all(color: Theme.of(context).colorScheme.primary, width: 1)
+              border: isSelected
+                  ? Border.all(color: colors.primary, width: 1)
                   : null,
             ),
             child: Row(
               children: [
-                Icon(
-                  icon,
-                  color: Theme.of(context).colorScheme.onSurface,
-                  size: 24,
-                ),
+                AppSvg(asset, width: 24, height: 24),
                 const SizedBox(width: 16),
                 Text(
                   title,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
+                  style: (isSelected
+                          ? AppTextStyles.inter16SemiBold
+                          : AppTextStyles.inter16Medium)
+                      .copyWith(color: colors.onSurface),
                 ),
               ],
             ),
@@ -1459,84 +1031,64 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Widget _buildBottomNavigation() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final theme = Theme.of(context);
-    
-    // Responsive sizing
-    double iconSize;
-    double fontSize;
-    
-    if (screenWidth < 600) {
-      // Mobile
-      iconSize = 24;
-      fontSize = 12;
-    } else if (screenWidth < 1200) {
-      // Tablet
-      iconSize = 28;
-      fontSize = 14;
-    } else {
-      // Desktop
-      iconSize = 32;
-      fontSize = 16;
+    final colors = Theme.of(context).colorScheme;
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
+    Widget navItem({
+      required int index,
+      required String label,
+      required String asset,
+    }) {
+      final selected = _currentIndex == index;
+      final tint = selected ? colors.primary : colors.onSurfaceVariant;
+
+      return Expanded(
+        child: InkWell(
+          onTap: () => setState(() => _currentIndex = index),
+          child: Padding(
+            padding: EdgeInsets.only(top: 10, bottom: bottomInset > 0 ? 6 : 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppSvg(asset, width: 24, height: 24, color: tint),
+                const SizedBox(height: 6),
+                Text(
+                  label,
+                  style: (selected
+                          ? AppTextStyles.inter12SemiBold
+                          : AppTextStyles.inter12Regular)
+                      .copyWith(color: tint),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     }
-    
+
     return Container(
       decoration: BoxDecoration(
-        color: theme.bottomNavigationBarTheme.backgroundColor ?? theme.cardColor,
+        color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: theme.shadowColor.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, -1),
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
           ),
         ],
       ),
-      child: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-          _pageController.animateToPage(
-            index,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-          );
-        },
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: theme.bottomNavigationBarTheme.backgroundColor ?? theme.cardColor,
-        selectedItemColor: theme.bottomNavigationBarTheme.selectedItemColor ?? theme.colorScheme.primary,
-        unselectedItemColor: theme.bottomNavigationBarTheme.unselectedItemColor ?? theme.colorScheme.onSurface.withOpacity(0.6),
-        selectedLabelStyle: TextStyle(
-          fontWeight: FontWeight.w600, 
-          fontSize: fontSize,
-          color: theme.bottomNavigationBarTheme.selectedItemColor ?? theme.colorScheme.primary,
-        ),
-        unselectedLabelStyle: TextStyle(
-          fontWeight: FontWeight.w400, 
-          fontSize: fontSize,
-          color: theme.bottomNavigationBarTheme.unselectedItemColor ?? theme.colorScheme.onSurface.withOpacity(0.6),
-        ),
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home, size: iconSize), 
-            label: 'Home'
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart, size: iconSize),
+      child: Row(
+        children: [
+          navItem(index: 0, label: 'Home', asset: AppAssets.navHome),
+          navItem(
+            index: 1,
             label: 'Statistics',
+            asset: AppAssets.navStatistics,
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.star, size: iconSize), 
-            label: 'Rewards'
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings, size: iconSize), 
-            label: 'Setting'
-          ),
+          navItem(index: 2, label: 'Rewards', asset: AppAssets.navRewards),
+          navItem(index: 3, label: 'Setting', asset: AppAssets.navSettings),
         ],
       ),
     );
   }
-} 
+}

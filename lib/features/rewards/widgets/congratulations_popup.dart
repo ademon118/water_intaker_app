@@ -1,9 +1,7 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../app_tokens.dart';
 
-class CongratulationsPopup extends ConsumerStatefulWidget {
+class CongratulationsPopup extends StatelessWidget {
   final String badgeName;
   final String badgeDescription;
   final VoidCallback onSave;
@@ -18,222 +16,79 @@ class CongratulationsPopup extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<CongratulationsPopup> createState() => _CongratulationsPopupState();
-}
-
-class _CongratulationsPopupState extends ConsumerState<CongratulationsPopup>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _fadeAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-    
-    _scaleAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.elasticOut,
-    ));
-    
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    ));
-    
-    _animationController.forward();
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animationController,
-      builder: (context, child) {
-        return Container(
-          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5 * _fadeAnimation.value),
-          child: Center(
-            child: Transform.scale(
-              scale: _scaleAnimation.value,
-              child: Container(
-                margin: const EdgeInsets.all(40),
-                padding: const EdgeInsets.all(30),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
-                      spreadRadius: 5,
-                      blurRadius: 15,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Star Badge with Animation
-                    _buildStarBadge(),
-                    const SizedBox(height: 20),
-                    
-                    // Congratulations Text
-                    Container(
-                      child: SelectableText(
-                        'Congrats',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onSurface,
-                          decoration: TextDecoration.none,
-                        ),
-                        enableInteractiveSelection: false,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    
-                    // Badge/Achievement Description
-                    Container(
-                      child: SelectableText(
-                        'You earned ${widget.badgeName}',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                          fontWeight: FontWeight.w500,
-                          decoration: TextDecoration.none,
-                        ),
-                        textAlign: TextAlign.center,
-                        enableInteractiveSelection: false,
-                      ),
-                    ),
-                    const SizedBox(height: 30),
-                    
-                    // Save Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          widget.onSave();
-                          Navigator.of(context).pop();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Save',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 15),
-                    
-                    // View Badge Link
-                    GestureDetector(
-                      onTap: () {
-                        widget.onViewBadge();
-                        Navigator.of(context).pop();
-                      },
-                      child: Text(
-                        'View the badge',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w600,
-                          decoration: TextDecoration.none,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
+    final colors = Theme.of(context).colorScheme;
 
-  Widget _buildStarBadge() {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        // Background circle with gradient
-        Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Theme.of(context).colorScheme.primary,
-                Theme.of(context).colorScheme.primary.withOpacity(0.8),
-              ],
-            ),
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-                spreadRadius: 2,
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-        ),
-        
-        // Main star
-        Icon(
-          Icons.star,
-          color: Theme.of(context).colorScheme.primary,
-          size: 40,
-        ),
-        
-        // Small decorative dots around the star
-        ...List.generate(5, (index) {
-          final angle = (index * 72) * (3.14159 / 180); // 72 degrees apart
-          final radius = 35.0;
-          final x = radius * cos(angle);
-          final y = radius * sin(angle);
-          
-          return Positioned(
-            left: 40 + x - 3, // Center at 40, adjust for dot size
-            top: 40 + y - 3,
-            child: Container(
-              width: 6,
-              height: 6,
+    return Dialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
+                color: colors.primary.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
+              child: Icon(Icons.star, color: colors.primary, size: 36),
             ),
-          );
-        }),
-      ],
+            const SizedBox(height: 16),
+            Text(
+              'Congrats',
+              style: AppTextStyles.inter20Bold.copyWith(color: colors.onSurface),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'You earned $badgeName',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.inter14Regular.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 45,
+              child: ElevatedButton(
+                onPressed: () {
+                  onSave();
+                  Navigator.of(context).pop();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  'Save',
+                  style: AppTextStyles.inter16SemiBold
+                      .copyWith(color: Colors.white),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () {
+                onViewBadge();
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                'View the badge',
+                style: AppTextStyles.inter14SemiBold.copyWith(
+                  color: colors.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

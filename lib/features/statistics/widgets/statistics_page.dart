@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../app_tokens.dart';
 import '../../../services/water_intake_service.dart';
 import '../../../services/water_intake_provider.dart';
 import '../../../models/water_intake.dart';
@@ -112,11 +113,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
             child: Text(
               'Statistics',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
+              style: AppTextStyles.inter24Bold.copyWith(color: Theme.of(context).colorScheme.onSurface),
             ),
           ),
           const SizedBox(width: 48),
@@ -155,10 +152,16 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
                 child: Text(
                   period,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                    color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  style: (isSelected
+                          ? AppTextStyles.inter16SemiBold
+                          : AppTextStyles.inter16Regular)
+                      .copyWith(
+                    color: isSelected
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.6),
                   ),
                 ),
               ),
@@ -245,19 +248,14 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
           const SizedBox(height: 10),
           Text(
             title,
-            style: TextStyle(
-              fontSize: 14,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            style: AppTextStyles.inter14Regular.copyWith(
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 5),
           Text(
             value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
+            style: AppTextStyles.inter20Bold.copyWith(color: Theme.of(context).colorScheme.onSurface),
           ),
         ],
       ),
@@ -288,9 +286,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
         children: [
           Text(
             'Drink Type Breakdown',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+            style: AppTextStyles.inter18Bold.copyWith(
               color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
@@ -315,17 +311,15 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
             children: [
               Text(
                 drinkType,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
+                style: AppTextStyles.inter16Medium.copyWith(color: Theme.of(context).colorScheme.onSurface),
               ),
               Text(
                 '${amount.toInt()}ml (${percentage.toStringAsFixed(0)}%)',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+                style: AppTextStyles.inter12Regular.copyWith(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.4),
                 ),
               ),
             ],
@@ -361,9 +355,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
         children: [
           Text(
             'Intake Trend',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+            style: AppTextStyles.inter18Bold.copyWith(
               color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
@@ -424,9 +416,11 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
               const SizedBox(height: 8),
               Text(
                 labels[index],
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                style: AppTextStyles.inter10Regular.copyWith(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.6),
                 ),
               ),
             ],
@@ -456,9 +450,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
         children: [
           Text(
             'Detailed Statistics',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+            style: AppTextStyles.inter18Bold.copyWith(
               color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
@@ -481,18 +473,18 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
         Expanded(
           child: Text(
             label,
-            style: TextStyle(
-              fontSize: 14,
+            style: AppTextStyles.inter14Regular.copyWith(
               color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
         ),
         Text(
           value,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+          style: AppTextStyles.inter14SemiBold.copyWith(
+            color: Theme.of(context)
+                .colorScheme
+                .onSurface
+                .withValues(alpha: 0.6),
           ),
         ),
       ],
@@ -524,9 +516,11 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
           const SizedBox(height: 16),
           Text(
             message,
-            style: TextStyle(
-              fontSize: 16,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            style: AppTextStyles.inter16Regular.copyWith(
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.6),
             ),
             textAlign: TextAlign.center,
           ),

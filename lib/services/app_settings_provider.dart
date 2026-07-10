@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
+import '../app_theme.dart';
 import '../models/user_settings.dart';
 import 'user_settings_service.dart';
 
@@ -24,7 +25,8 @@ class AppSettingsNotifier extends StateNotifier<UserSettings> {
   Future<void> _loadSettings() async {
     try {
       final settings = await UserSettingsService.loadSettings();
-      state = settings;
+      // Force light mode — dark mode is no longer supported
+      state = settings.copyWith(isDarkMode: false);
     } catch (e) {
       print('Error loading app settings: $e');
       // Keep default values
@@ -46,15 +48,6 @@ class AppSettingsNotifier extends StateNotifier<UserSettings> {
       state = state.copyWith(unit: unit);
     } catch (e) {
       print('Error updating unit: $e');
-    }
-  }
-
-  Future<void> updateTheme(bool isDarkMode) async {
-    try {
-      await UserSettingsService.updateAppearance(isDarkMode);
-      state = state.copyWith(isDarkMode: isDarkMode);
-    } catch (e) {
-      print('Error updating theme: $e');
     }
   }
 
@@ -101,91 +94,9 @@ class AppSettingsNotifier extends StateNotifier<UserSettings> {
   String getUnitAbbreviation() {
     return state.unit == 'oz' ? 'oz' : 'ml';
   }
-
-  // Get current theme mode
-  ThemeMode getThemeMode() {
-    return state.isDarkMode ? ThemeMode.dark : ThemeMode.light;
-  }
 }
 
 // Theme provider for MaterialApp
 final themeProvider = Provider<ThemeData>((ref) {
-  final settings = ref.watch(appSettingsProvider);
-  return _buildTheme(settings.isDarkMode);
+  return AppTheme.light;
 });
-
-ThemeData _buildTheme(bool isDarkMode) {
-  if (isDarkMode) {
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF00B4D8),
-        brightness: Brightness.dark,
-      ),
-      scaffoldBackgroundColor: const Color(0xFF121212),
-      cardColor: const Color(0xFF1E1E1E),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF1E1E1E),
-        foregroundColor: Colors.white,
-      ),
-      // Add more comprehensive dark theme colors
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: Color(0xFF1E1E1E),
-        selectedItemColor: Color(0xFF00B4D8),
-        unselectedItemColor: Colors.grey,
-        selectedLabelStyle: TextStyle(color: Colors.white),
-        unselectedLabelStyle: TextStyle(color: Colors.grey),
-      ),
-      // Define text colors for dark mode
-      textTheme: const TextTheme(
-        bodyLarge: TextStyle(color: Colors.white),
-        bodyMedium: TextStyle(color: Colors.white),
-        bodySmall: TextStyle(color: Colors.white70),
-        titleLarge: TextStyle(color: Colors.white),
-        titleMedium: TextStyle(color: Colors.white),
-        titleSmall: TextStyle(color: Colors.white),
-      ),
-      // Define icon colors for dark mode
-      iconTheme: const IconThemeData(
-        color: Colors.white,
-      ),
-    );
-  } else {
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.light,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF00B4D8),
-        brightness: Brightness.light,
-      ),
-      scaffoldBackgroundColor: const Color(0xFFF1F5F9),
-      cardColor: Colors.white,
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-      ),
-      // Add more comprehensive light theme colors
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: Colors.white,
-        selectedItemColor: Color(0xFF4A90E2),
-        unselectedItemColor: Colors.grey,
-        selectedLabelStyle: TextStyle(color: Colors.black87),
-        unselectedLabelStyle: TextStyle(color: Colors.grey),
-      ),
-      // Define text colors for light mode
-      textTheme: const TextTheme(
-        bodyLarge: TextStyle(color: Colors.black87),
-        bodyMedium: TextStyle(color: Colors.black87),
-        bodySmall: TextStyle(color: Colors.black54),
-        titleLarge: TextStyle(color: Colors.black87),
-        titleMedium: TextStyle(color: Colors.black87),
-        titleSmall: TextStyle(color: Colors.black87),
-      ),
-      // Define icon colors for light mode
-      iconTheme: const IconThemeData(
-        color: Colors.black87,
-      ),
-    );
-  }
-}

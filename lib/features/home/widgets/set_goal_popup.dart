@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../app_tokens.dart';
 import '../../../services/app_settings_provider.dart';
 
 class SetGoalPopup extends ConsumerStatefulWidget {
@@ -8,8 +9,8 @@ class SetGoalPopup extends ConsumerStatefulWidget {
   final Function(double newGoal)? onSaveGoal;
 
   const SetGoalPopup({
-    super.key, 
-    required this.onClose, 
+    super.key,
+    required this.onClose,
     required this.currentGoal,
     this.onSaveGoal,
   });
@@ -18,50 +19,28 @@ class SetGoalPopup extends ConsumerStatefulWidget {
   ConsumerState<SetGoalPopup> createState() => _SetGoalPopupState();
 }
 
-class _SetGoalPopupState extends ConsumerState<SetGoalPopup>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _slideAnimation;
-  late Animation<double> _fadeAnimation;
-
+class _SetGoalPopupState extends ConsumerState<SetGoalPopup> {
   late TextEditingController _goalController;
   bool _isGoalValid = false;
 
   @override
   void initState() {
     super.initState();
-    // Convert current goal to display unit for the text field
-    final displayGoal = ref.read(appSettingsProvider.notifier).convertToDisplayUnit(widget.currentGoal);
-    _goalController = TextEditingController(text: displayGoal.toInt().toString());
+    final displayGoal = ref
+        .read(appSettingsProvider.notifier)
+        .convertToDisplayUnit(widget.currentGoal);
+    _goalController =
+        TextEditingController(text: displayGoal.toInt().toString());
     _checkGoalValidity();
-    
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _slideAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    ));
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    ));
-    _animationController.forward();
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
     _goalController.dispose();
     super.dispose();
   }
+
+  void _closePopup() => widget.onClose();
 
   void _checkGoalValidity() {
     final goalText = _goalController.text;
@@ -77,176 +56,138 @@ class _SetGoalPopupState extends ConsumerState<SetGoalPopup>
     }
   }
 
-  void _closePopup() {
-    _animationController.reverse().then((_) {
-      widget.onClose();
-    });
-  }
-
   void _saveGoal() {
-    if (_isGoalValid) {
-      final displayGoal = double.parse(_goalController.text);
-      // Convert from display unit to ml for storage
-      final goalInMl = ref.read(appSettingsProvider.notifier).convertFromDisplayUnit(displayGoal);
-      
-      if (widget.onSaveGoal != null) {
-        widget.onSaveGoal!(goalInMl);
-      }
-      _closePopup();
-    }
+    if (!_isGoalValid) return;
+    final displayGoal = double.parse(_goalController.text);
+    final goalInMl = ref
+        .read(appSettingsProvider.notifier)
+        .convertFromDisplayUnit(displayGoal);
+    widget.onSaveGoal?.call(goalInMl);
+    _closePopup();
   }
 
   @override
   Widget build(BuildContext context) {
-    final unitLabel = ref.read(appSettingsProvider.notifier).getUnitAbbreviation();
-    
-    return AnimatedBuilder(
-      animation: _animationController,
-      builder: (context, child) {
-        return Container(
-          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6 * _fadeAnimation.value),
-          child: Column(
-            children: [
-              // Transparent area to close popup
-              Expanded(
-                child: GestureDetector(
-                  onTap: _closePopup,
-                  child: Container(
-                    color: Colors.transparent,
-                  ),
-                ),
-              ),
-              
-              // Popup content
-              Transform.translate(
-                offset: Offset(0, 100 * _slideAnimation.value),
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20),
-                  padding: const EdgeInsets.all(25),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
-                        spreadRadius: 5,
-                        blurRadius: 15,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Header
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.track_changes,
-                            color: Theme.of(context).colorScheme.primary,
-                            size: 28,
-                          ),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: Text(
-                              'Set Daily Goal',
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: _closePopup,
-                            icon: const Icon(Icons.close),
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                          ),
-                        ],
-                      ),
-                      
-                      const SizedBox(height: 25),
-                      
-                      // Goal input field
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: _isGoalValid ? Theme.of(context).colorScheme.tertiary : Theme.of(context).colorScheme.surface,
-                            width: 2,
-                          ),
-                        ),
-                        child: TextField(
-                          controller: _goalController,
-                          keyboardType: TextInputType.number,
-                          onChanged: (value) => _checkGoalValidity(),
-                          decoration: InputDecoration(
-                            hintText: 'Enter your daily goal',
-                            suffixText: unitLabel,
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 18,
-                            ),
-                          ),
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 20),
-                      
-                      // Info text
-                      Text(
-                        'Set a realistic daily water intake goal to stay hydrated and track your progress.',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                          height: 1.4,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      
-                      const SizedBox(height: 25),
-                      
-                      // Save button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed: _isGoalValid ? _saveGoal : null,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.primary,
-                            foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: Text(
-                            'Save Goal',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              
-              // Bottom spacing
-              SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 20),
-            ],
+    final unitLabel =
+        ref.read(appSettingsProvider.notifier).getUnitAbbreviation();
+    final colors = Theme.of(context).colorScheme;
+
+    return Material(
+      color: colors.onSurface.withValues(alpha: 0.25),
+      child: Column(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _closePopup,
+              child: const SizedBox.expand(),
+            ),
           ),
-        );
-      },
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            padding: const EdgeInsets.all(25),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.track_changes,
+                      color: colors.primary,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: Text(
+                        'Set Daily Goal',
+                        style: AppTextStyles.inter22Bold
+                            .copyWith(color: colors.onSurface),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _closePopup,
+                      icon: const Icon(Icons.close),
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 25),
+                Container(
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _isGoalValid
+                          ? colors.tertiary
+                          : colors.surfaceContainerHighest,
+                      width: 2,
+                    ),
+                  ),
+                  child: TextField(
+                    controller: _goalController,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => _checkGoalValidity(),
+                    decoration: InputDecoration(
+                      hintText: 'Enter your daily goal',
+                      suffixText: unitLabel,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 18,
+                      ),
+                    ),
+                    style: AppTextStyles.inter18SemiBold
+                        .copyWith(color: colors.onSurface),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Set a realistic daily water intake goal to stay hydrated and track your progress.',
+                  style: AppTextStyles.inter14Regular.copyWith(
+                    color: colors.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 25),
+                SizedBox(
+                  width: double.infinity,
+                  height: 45,
+                  child: ElevatedButton(
+                    onPressed: _isGoalValid ? _saveGoal : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colors.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      'Save Goal',
+                      style: AppTextStyles.inter16SemiBold
+                          .copyWith(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 12),
+        ],
+      ),
     );
   }
-} 
+}

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../app_tokens.dart';
 import '../../../services/app_settings_provider.dart';
 
 class DashboardPage extends ConsumerStatefulWidget {
@@ -66,11 +67,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             child: Text(
               'Dashboard',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
+              style: AppTextStyles.inter24Bold.copyWith(color: Theme.of(context).colorScheme.onSurface),
             ),
           ),
           const SizedBox(width: 48), // Balance the layout
@@ -108,10 +105,16 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 child: Text(
                   period,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  style: (isSelected
+                          ? AppTextStyles.inter16Bold
+                          : AppTextStyles.inter16Regular)
+                      .copyWith(
+                    color: isSelected
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.6),
                   ),
                 ),
               ),
@@ -144,9 +147,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         children: [
           Text(
             'Weekly Progress',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+            style: AppTextStyles.inter18Bold.copyWith(
               color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
@@ -176,16 +177,20 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     const SizedBox(height: 8),
                     Text(
                       _weekDays[index],
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      style: AppTextStyles.inter12Regular.copyWith(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.6),
                       ),
                     ),
                     Text(
                       '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(value).toInt()}$unitLabel',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                      style: AppTextStyles.inter10Regular.copyWith(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.5),
                       ),
                     ),
                   ],
@@ -239,20 +244,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               children: [
                 Text(
                   'Average Daily Intake',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
+                  style: AppTextStyles.inter16Medium.copyWith(color: Theme.of(context).colorScheme.onSurface),
                 ),
                 const SizedBox(height: 5),
                 Text(
                   '${displayAverage.toInt()}$unitLabel',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
+                  style: AppTextStyles.inter24Bold.copyWith(color: Theme.of(context).colorScheme.onSurface),
                 ),
               ],
             ),
@@ -318,17 +315,17 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           const SizedBox(height: 10),
           Text(
             title,
-            style: TextStyle(
-              fontSize: 14,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            style: AppTextStyles.inter14Regular.copyWith(
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 5),
           Text(
             value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+            style: AppTextStyles.inter18Bold.copyWith(
               color: Theme.of(context).colorScheme.onSurface,
             ),
           ),

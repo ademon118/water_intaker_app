@@ -18,13 +18,12 @@ class WaterIntakeApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeData = ref.watch(themeProvider);
-    final themeMode = ref.watch(appSettingsProvider.notifier).getThemeMode();
-    
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Water Intake Tracker',
+      title: 'Water Intaker',
       theme: themeData,
-      themeMode: themeMode,
+      themeMode: ThemeMode.light,
       home: const HomePage(),
     );
   }

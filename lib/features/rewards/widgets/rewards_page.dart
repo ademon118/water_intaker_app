@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../app_tokens.dart';
 import '../../../services/water_intake_provider.dart';
 import '../../../services/rewards_service.dart';
 import '../../../services/user_settings_service.dart';
@@ -82,11 +83,7 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
             child: Text(
               'Rewards',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
+              style: AppTextStyles.inter24Bold.copyWith(color: Theme.of(context).colorScheme.onSurface),
             ),
           ),
           const SizedBox(width: 48),
@@ -121,18 +118,17 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
             children: [
               Text(
                 'Today\'s Progress',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                style: AppTextStyles.inter18Bold.copyWith(
                   color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               Text(
                 '${displayTotal.toInt()}$unitLabel / ${displayGoal.toInt()}$unitLabel',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                style: AppTextStyles.inter16SemiBold.copyWith(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.6),
                 ),
               ),
             ],
@@ -154,9 +150,8 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
               ),
               child: Text(
                 'Goal Achieved! 🎉',
-                style: TextStyle(
+                style: AppTextStyles.inter14SemiBold.copyWith(
                   color: Theme.of(context).colorScheme.onPrimary,
-                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
@@ -174,11 +169,7 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
       children: [
         Text(
           'Badges',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
+          style: AppTextStyles.inter20Bold.copyWith(color: Theme.of(context).colorScheme.onSurface),
         ),
         const SizedBox(height: 15),
         GridView.builder(
@@ -253,19 +244,24 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
           Text(
             badge['name'],
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: isUnlocked ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+            style: AppTextStyles.inter12SemiBold.copyWith(
+              color: isUnlocked
+                  ? Theme.of(context).colorScheme.onSurface
+                  : Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.5),
             ),
           ),
           const SizedBox(height: 4),
           Text(
             badge['description'],
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 10,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            style: AppTextStyles.inter10Regular.copyWith(
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.6),
             ),
           ),
         ],
@@ -282,11 +278,7 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
       children: [
         Text(
           'Achievements',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
+          style: AppTextStyles.inter20Bold.copyWith(color: Theme.of(context).colorScheme.onSurface),
         ),
         const SizedBox(height: 15),
         ListView.builder(
@@ -359,18 +351,23 @@ class _RewardsPageState extends ConsumerState<RewardsPage> {
               children: [
                 Text(
                   achievement['title'],
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: isCompleted ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  style: AppTextStyles.inter16SemiBold.copyWith(
+                    color: isCompleted
+                        ? Theme.of(context).colorScheme.onSurface
+                        : Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.6),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   achievement['description'],
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  style: AppTextStyles.inter14Regular.copyWith(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.6),
                   ),
                 ),
               ],
