@@ -19,7 +19,7 @@ class UserSettingsService {
           dailyGoal: 2800.0,
           reminderEnabled: false,
           reminderMode: 'Off',
-          snoozeDuration: 0,
+          snoozeDuration: 1,
         );
       }
     }
@@ -29,7 +29,7 @@ class UserSettingsService {
       dailyGoal: 2800.0,
       reminderEnabled: false,
       reminderMode: 'Off',
-      snoozeDuration: 0,
+      snoozeDuration: 1,
     );
   }
 

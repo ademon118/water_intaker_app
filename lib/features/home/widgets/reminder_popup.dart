@@ -19,7 +19,7 @@ class ReminderPopup extends StatefulWidget {
 
 class _ReminderPopupState extends State<ReminderPopup> {
   int _selectedReminderMode = 1;
-  int _selectedSnoozeDuration = 0;
+  int _selectedSnoozeDuration = 1;
 
   final List<Map<String, dynamic>> _reminderModes = [
     {'name': 'Off', 'asset': AppAssets.reminderOff},
@@ -96,12 +96,14 @@ class _ReminderPopupState extends State<ReminderPopup> {
                 ),
                 const SizedBox(height: 14),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _buildSnoozeButton('0.5h', 0),
-                    _buildSnoozeButton('1h', 1),
-                    _buildSnoozeButton('1.5h', 2),
-                    _buildSnoozeButton('2h', 3),
+                    Expanded(child: _buildSnoozeButton('15mins', 0)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _buildSnoozeButton('30mins', 1)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _buildSnoozeButton('45mins', 2)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _buildSnoozeButton('60mins', 3)),
                   ],
                 ),
                 const SizedBox(height: 28),
@@ -210,7 +212,7 @@ class _ReminderPopupState extends State<ReminderPopup> {
       onTap: () => setState(() => _selectedSnoozeDuration = index),
       child: Container(
         height: 36,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: isSelected ? Colors.white : const Color(0xFFF1F5F9),

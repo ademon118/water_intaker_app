@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app_tokens.dart';
@@ -35,15 +36,23 @@ class _HomePageState extends ConsumerState<HomePage> {
   bool _showSetGoalPopup = false;
   bool _showNavigationDrawer = false;
   bool _hasShownCongratulationsPopup = false;
+  Timer? _reminderCountdownTimer;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    _reminderCountdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      if (ref.read(appSettingsProvider).reminderEnabled) {
+        setState(() {});
+      }
+    });
   }
 
   @override
   void dispose() {
+    _reminderCountdownTimer?.cancel();
     super.dispose();
   }
 
@@ -274,11 +283,11 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   int _getDurationInMinutes(int snoozeDuration) {
     switch (snoozeDuration) {
-      case 0: return 30; // 0.5h = 30 minutes
-      case 1: return 60; // 1h = 60 minutes
-      case 2: return 90; // 1.5h = 90 minutes
-      case 3: return 120; // 2h = 120 minutes
-      default: return 60;
+      case 0: return 15;
+      case 1: return 30;
+      case 2: return 45;
+      case 3: return 60;
+      default: return 30;
     }
   }
 
@@ -302,24 +311,21 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (ref.read(appSettingsProvider) == null || !ref.read(appSettingsProvider).reminderEnabled) {
       return 'Off';
     }
-    
-    final intervalMinutes = ref.read(appSettingsProvider).snoozeDuration;
+
+    final intervalMinutes =
+        _getDurationInMinutes(ref.read(appSettingsProvider).snoozeDuration);
     final nextReminderTime = _getNextReminderTime(intervalMinutes);
     final now = DateTime.now();
     final difference = nextReminderTime.difference(now);
-    
+
     if (difference.isNegative) {
-      return '${intervalMinutes}m';
+      return '${intervalMinutes.toString().padLeft(2, '0')}:00';
     }
-    
-    final hours = difference.inHours;
-    final minutes = difference.inMinutes % 60;
-    
-    if (hours > 0) {
-      return '${hours}h ${minutes}m';
-    } else {
-      return '${minutes}m';
-    }
+
+    final totalSeconds = difference.inSeconds;
+    final minutes = totalSeconds ~/ 60;
+    final seconds = totalSeconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -605,7 +611,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             child: _buildInfoCard(
               title: 'Goal',
               value:
-                  '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(goalIntake).toInt()}${ref.read(appSettingsProvider.notifier).getUnitAbbreviation()}',
+                  '${ref.read(appSettingsProvider.notifier).convertToDisplayUnit(goalIntake).toInt()}',
               asset: AppAssets.target,
             ),
           ),
@@ -619,42 +625,53 @@ class _HomePageState extends ConsumerState<HomePage> {
     required String value,
     required String asset,
   }) {
-    final colors = Theme.of(context).colorScheme;
-
     return Container(
-      height: 88,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
+            blurRadius: 10,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   title,
-                  style: AppTextStyles.interMedium(13).copyWith(color: colors.onSurfaceVariant),
+                  style: AppTextStyles.interMedium(14).copyWith(
+                    color: AppColors.black70,
+                  ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Text(
                   value,
-                  style: AppTextStyles.inter22Bold.copyWith(color: colors.onSurface),
+                  style: AppTextStyles.interBold(28).copyWith(
+                    color: AppColors.black1,
+                    height: 1.1,
+                  ),
                 ),
               ],
             ),
           ),
-          AppSvg(asset, width: 40, height: 40),
+          Container(
+            width: 48,
+            height: 48,
+            decoration: const BoxDecoration(
+              color: Color(0xFFE8F4FF),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: AppSvg(asset, width: 20, height: 20),
+          ),
         ],
       ),
     );
@@ -1046,7 +1063,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         child: InkWell(
           onTap: () => setState(() => _currentIndex = index),
           child: Padding(
-            padding: EdgeInsets.only(top: 10, bottom: bottomInset > 0 ? 6 : 10),
+            padding: const EdgeInsets.only(top: 10),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -1077,17 +1094,20 @@ class _HomePageState extends ConsumerState<HomePage> {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          navItem(index: 0, label: 'Home', asset: AppAssets.navHome),
-          navItem(
-            index: 1,
-            label: 'Statistics',
-            asset: AppAssets.navStatistics,
-          ),
-          navItem(index: 2, label: 'Rewards', asset: AppAssets.navRewards),
-          navItem(index: 3, label: 'Setting', asset: AppAssets.navSettings),
-        ],
+      child: Padding(
+        padding: EdgeInsets.only(bottom: 8 + bottomInset),
+        child: Row(
+          children: [
+            navItem(index: 0, label: 'Home', asset: AppAssets.navHome),
+            navItem(
+              index: 1,
+              label: 'Statistics',
+              asset: AppAssets.navStatistics,
+            ),
+            navItem(index: 2, label: 'Rewards', asset: AppAssets.navRewards),
+            navItem(index: 3, label: 'Setting', asset: AppAssets.navSettings),
+          ],
+        ),
       ),
     );
   }

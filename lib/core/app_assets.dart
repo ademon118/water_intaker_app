@@ -8,6 +8,7 @@ class AppAssets {
   // Home
   static const String waterDrop = 'lib/assets/icons/home_water.png';
   static const String drop = 'lib/assets/icons/home_drop.png';
+  // Home info cards (PNG extracted from lib/assets/images/home/*.svg)
   static const String reminder = 'lib/assets/icons/home_reminder.png';
   static const String target = 'lib/assets/icons/home_target.png';
   static const String trophy = 'lib/assets/icons/home_trophy.png';

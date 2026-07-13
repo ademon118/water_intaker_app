@@ -102,11 +102,11 @@ class ReminderService {
 
   static int _getDurationInMinutes(int snoozeDuration) {
     switch (snoozeDuration) {
-      case 0: return 30; // 0.5h = 30 minutes
-      case 1: return 60; // 1h = 60 minutes
-      case 2: return 90; // 1.5h = 90 minutes
-      case 3: return 120; // 2h = 120 minutes
-      default: return 60;
+      case 0: return 15;
+      case 1: return 30;
+      case 2: return 45;
+      case 3: return 60;
+      default: return 30;
     }
   }
 

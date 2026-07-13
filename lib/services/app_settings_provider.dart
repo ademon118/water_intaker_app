@@ -15,7 +15,7 @@ class AppSettingsNotifier extends StateNotifier<UserSettings> {
     dailyGoal: 2800.0,
     reminderEnabled: false,
     reminderMode: 'Off',
-    snoozeDuration: 0,
+    snoozeDuration: 1,
     unit: 'ml',
     isDarkMode: false,
   )) {

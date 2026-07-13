@@ -34,7 +34,7 @@ class UserSettings {
       dailyGoal: json['dailyGoal']?.toDouble() ?? 2800.0,
       reminderEnabled: json['reminderEnabled'] ?? false,
       reminderMode: json['reminderMode'] ?? 'Off',
-      snoozeDuration: json['snoozeDuration'] ?? 0,
+      snoozeDuration: json['snoozeDuration'] ?? 1,
       lastReminderTime: json['lastReminderTime'] != null
           ? DateTime.fromMillisecondsSinceEpoch(json['lastReminderTime'])
           : null,
